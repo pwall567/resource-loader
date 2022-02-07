@@ -124,7 +124,11 @@ class ResourceLoaderTest {
         val parser = XMLLoader(URL("http://kjson.io/xml/"))
         val result = parser.load("test1.xml")
         val root = result.documentElement
-        expect("test1") { root.tagName }
+        expect("test") { root.tagName }
+        val resolved = parser.resolve("test1.xml")
+        expect("test") { resolved.load().documentElement.tagName }
+        val sibling = resolved.resolve("test2.xml")
+        expect("test2") { sibling.load().documentElement.tagName }
     }
 
     @Test fun `should switch from local file to remote URL`() {
@@ -132,7 +136,7 @@ class ResourceLoaderTest {
         val result = parser.load("test1.xml")
         expect("Hello!") { result.getElementsByTagName("test")?.item(0)?.textContent }
         val result2 = parser.load("http://kjson.io/xml/test1.xml")
-        expect("Testing") { result2.getElementsByTagName("test1")?.item(0)?.textContent }
+        expect("Hello!") { result2.getElementsByTagName("test")?.item(0)?.textContent }
     }
 
     @Test fun `should throw not found exception when resource not found`() {
@@ -151,6 +155,19 @@ class ResourceLoaderTest {
             assertTrue { startsWith("Resource not found - ") }
             assertTrue { endsWith("/test9.xml") }
         }
+    }
+
+    @Test fun `should read from JAR file`() {
+        val jarFile = File("src/test/resources/test.jar")
+        val jarURL = URL("jar:file:${jarFile.absolutePath}!/xml/")
+        val parser = XMLLoader(jarURL)
+        val result = parser.load("test1.xml")
+        val root = result.documentElement
+        expect("test") { root.tagName }
+        val resolved = parser.resolve("test1.xml")
+        expect("test") { resolved.load().documentElement.tagName }
+        val sibling = resolved.resolve("test2.xml")
+        expect("test2") { sibling.load().documentElement.tagName }
     }
 
 }
