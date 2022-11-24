@@ -48,6 +48,8 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
     val resourceURL: URL
 ) {
 
+    private var parent: ResourceLoader<T, R>? = null
+
     /** The default extension to be used (the implementing class may supply this if required). */
     open val defaultExtension: String? = null
 
@@ -75,7 +77,7 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
      * Load the current resource.
      */
     fun load(): T {
-        // TODO consider caching (but beware of recursion, if load(ResourceDescriptor) function loads nested resources)
+        // TODO - consider caching
         resourcePath?.let { path ->
             if (!Files.exists(path) || Files.isDirectory(path))
                 throw ResourceNotFoundException(resourceURL)
@@ -125,11 +127,26 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
                 Files.isDirectory(resourcePath) -> resourcePath.resolve(extendedName)
                 else -> resourcePath.resolveSibling(extendedName)
             }
-            return resolvedLoader(resolved, resolved.toUri().toURL())
+            return checkRecursion(resolved, resolved.toUri().toURL())
         }
         val resolvedURL = resourceURL.toURI().resolve(extendedName).toURL()
-        return resolvedLoader(derivePath(resolvedURL), resolvedURL)
+        return checkRecursion(derivePath(resolvedURL), resolvedURL)
     }
+
+    private fun checkRecursion(resourcePath: Path?, resourceURL: URL): R {
+        var parentRef = parent
+        while (parentRef != null) {
+            if (this == parentRef)
+                throw ResourceRecursionException(resourceURL)
+            parentRef = parentRef.parent
+        }
+        return resolvedLoader(resourcePath, resourceURL).also { it.parent = this }
+    }
+
+    override fun equals(other: Any?): Boolean = this === other ||
+            other is ResourceLoader<*, *> && resourcePath == other.resourcePath && resourceURL == other.resourceURL
+
+    override fun hashCode(): Int = resourcePath.hashCode() xor resourceURL.hashCode()
 
     companion object {
 

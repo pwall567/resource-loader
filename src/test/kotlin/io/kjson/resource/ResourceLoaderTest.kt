@@ -126,8 +126,10 @@ class ResourceLoaderTest {
         val root = result.documentElement
         expect("test") { root.tagName }
         val resolved = parser.resolve("test1.xml")
+        expect(URL("http://kjson.io/xml/test1.xml")) { resolved.resourceURL }
         expect("test") { resolved.load().documentElement.tagName }
         val sibling = resolved.resolve("test2.xml")
+        expect(URL("http://kjson.io/xml/test2.xml")) { sibling.resourceURL }
         expect("test2") { sibling.load().documentElement.tagName }
     }
 
@@ -159,14 +161,16 @@ class ResourceLoaderTest {
 
     @Test fun `should read from JAR file`() {
         val jarFile = File("src/test/resources/test.jar")
-        val jarURL = URL("jar:file:${jarFile.absolutePath}!/xml/")
+        val jarURL = URL("jar:file:${jarFile.absolutePath}!/xml")
         val parser = XMLLoader(jarURL)
         val result = parser.load("test1.xml")
         val root = result.documentElement
         expect("test") { root.tagName }
         val resolved = parser.resolve("test1.xml")
+        expect(URL("jar:file:${jarFile.absolutePath}!/xml/test1.xml")) { resolved.resourceURL }
         expect("test") { resolved.load().documentElement.tagName }
         val sibling = resolved.resolve("test2.xml")
+        expect(URL("jar:file:${jarFile.absolutePath}!/xml/test2.xml")) { sibling.resourceURL }
         expect("test2") { sibling.load().documentElement.tagName }
     }
 
