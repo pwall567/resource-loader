@@ -28,7 +28,6 @@ package io.kjson.resource
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.test.expect
 import kotlin.test.fail
@@ -36,7 +35,6 @@ import kotlin.test.fail
 import java.io.File
 import java.net.URL
 import java.nio.file.FileSystems
-import io.kjson.resource.ResourceLoader.Companion.strim
 
 class ResourceLoaderTest {
 
@@ -48,20 +46,6 @@ class ResourceLoaderTest {
         expect("/b/a.xml") { ResourceLoader.addExtension("/b/a.xml", defaultExtension) }
         expect("/b.c/a.html") { ResourceLoader.addExtension("/b.c/a", defaultExtension) }
         expect("/b.c/a.xml") { ResourceLoader.addExtension("/b.c/a.xml", defaultExtension) }
-    }
-
-    @Test fun `should trim strings correctly`() {
-        expect("abc") { "abc".strim() }
-        expect("abc") { " abc".strim() }
-        expect("abc") { "  abc".strim() }
-        expect("abc") { "abc ".strim() }
-        expect("abc") { "abc  ".strim() }
-        expect("abc") { "    abc     ".strim() }
-        expect("") { "".strim() }
-        expect("") { " ".strim() }
-        expect("") { "    ".strim() }
-        val a = "xyz"
-        assertSame(a, a.strim())
     }
 
     @Test fun `should read explicitly specified file`() {
@@ -88,7 +72,7 @@ class ResourceLoaderTest {
     }
 
     @Test fun `should read second file from classpath`() {
-        val parser = XMLLoader(ResourceLoaderTest::class.java.getResource("/xml/") ?: fail("Can't find directory"))
+        val parser = XMLLoader(ResourceLoader.classPathURL("/xml/") ?: fail("Can't find directory"))
         val parser2 = parser.resolve("test1.xml")
         val result = parser2.load()
         expect("Hello!") { result.getElementsByTagName("test")?.item(0)?.textContent }

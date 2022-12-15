@@ -2,7 +2,7 @@
  * @(#) ResourceDescriptor.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2021, 2022 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 package io.kjson.resource
 
 import java.io.InputStream
+import java.net.URL
 import java.nio.charset.Charset
 import java.time.Instant
 
@@ -38,7 +39,9 @@ import net.pwall.pipeline.codec.DynamicReader
  * @author  Peter Wall
  */
 data class ResourceDescriptor(
+    // TODO add resourceURL (or reference to ResourceLoader)
     val inputStream: InputStream,
+    val url: URL,
     val charsetName: String? = null,
     val size: Long? = null,
     val time: Instant? = null,

@@ -2,7 +2,7 @@
  * @(#) ResourceLoader.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2021, 2022 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,21 +37,31 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
 
+import io.kjson.util.Cache
+import io.kjson.util.HTTPHeader
+
 /**
  * Resource loader abstract class.  This class provides a means of loading resources by a single mechanism, regardless
  * of whether the resource comes from a file in the local file system, a resource on the classpath or a remote URL.
  *
  * @author  Peter Wall
+ * @param   T       the target resource type
+ * @param   R       the `ResourceLoader` derived class type
  */
 abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor(
     private val resourcePath: Path?,
-    val resourceURL: URL
-) {
+    override val resourceURL: URL
+) : Loader<T, R> {
 
     private var parent: ResourceLoader<T, R>? = null
 
+    private val resourceCache = Cache<URL, T> { load(createResourceDescriptor()) }
+
     /** The default extension to be used (the implementing class may supply this if required). */
     open val defaultExtension: String? = null
+
+    /** The default extension to assume for HTTP(S) connections (the implementing class may supply this if required). */
+    open val defaultContentType: String? = null
 
     /**
      * Load the resource.  The [ResourceDescriptor] provides all the information available to access the data.
@@ -66,45 +76,52 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
     abstract fun resolvedLoader(resourcePath: Path?, resourceURL: URL) : R
 
     /**
-     * Load the named resource.  This function first resolves the name against the current resource, and then loads the
-     * resource under that name.
+     * Load the current resource (from cache if available).
      */
-    fun load(name: String): T {
-        return resolve(name).load()
+    override fun load(): T {
+        return resourceCache[resourceURL]
     }
 
-    /**
-     * Load the current resource.
-     */
-    fun load(): T {
-        // TODO - consider caching
+    private fun createResourceDescriptor(): ResourceDescriptor {
         resourcePath?.let { path ->
             if (!Files.exists(path) || Files.isDirectory(path))
                 throw ResourceNotFoundException(resourceURL)
-            val size = Files.size(path)
-            val time = Files.getLastModifiedTime(path).toInstant()
-            return load(ResourceDescriptor(Files.newInputStream(path), size = size, time= time))
+            return ResourceDescriptor(
+                inputStream = Files.newInputStream(path),
+                url = resourceURL,
+                size = Files.size(path),
+                time= Files.getLastModifiedTime(path).toInstant(),
+            )
         }
         return resourceURL.openConnection().let { conn ->
             val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
             val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
-            when (conn) {
-                is HttpURLConnection -> {
-                    // TODO think about adding support for ifModifiedSince
-                    if (!checkHTTP(conn))
-                        throw ResourceLoaderException("Connection vetoed - $resourceURL")
-                    if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                        throw ResourceNotFoundException(resourceURL)
-                    if (conn.responseCode != HttpURLConnection.HTTP_OK)
-                        throw IOException("Error status - ${conn.responseCode} - $resourceURL")
-                    val contentType = conn.contentType?.split(';')?.map { it.strim() }
-                    val charsetName = contentType?.findStartingFrom(1) { it.startsWith("charset=") }?.drop(8)?.strim()
-                    load(ResourceDescriptor(conn.getInputStream(), charsetName, contentLength, lastModified,
-                            contentType?.get(0)))
-                }
-                else -> load(ResourceDescriptor(conn.getInputStream(), null, contentLength, lastModified,
-                        conn.contentType))
+            val charsetName: String?
+            val mimeType: String?
+            if (conn is HttpURLConnection) {
+                // TODO think about adding support for ifModifiedSince
+                if (!checkHTTP(conn))
+                    throw ResourceLoaderException("Connection vetoed - $resourceURL")
+                if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                    throw ResourceNotFoundException(resourceURL)
+                if (conn.responseCode != HttpURLConnection.HTTP_OK)
+                    throw IOException("Error status - ${conn.responseCode} - $resourceURL")
+                val contentTypeHeader = conn.contentType?.let { HTTPHeader.create(it) }
+                charsetName = contentTypeHeader?.element()?.parameter("charset")
+                mimeType = contentTypeHeader?.firstElementText()
             }
+            else {
+                charsetName = null
+                mimeType = conn.contentType
+            }
+            ResourceDescriptor(
+                inputStream = conn.getInputStream(),
+                url = resourceURL,
+                charsetName = charsetName,
+                size = contentLength,
+                time = lastModified,
+                mimeType = mimeType,
+            )
         }
     }
 
@@ -119,7 +136,7 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
     /**
      * Resolve a name against the current resource loader.
      */
-    open fun resolve(name: String): R {
+    override fun resolve(name: String): R {
         // TODO consider separate functions for resolve(URI) and resolve(Path)
         val extendedName = addExtension(name, defaultExtension)
         if (URI(extendedName).scheme == null && resourcePath != null) {
@@ -136,25 +153,21 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
     private fun checkRecursion(resourcePath: Path?, resourceURL: URL): R {
         var parentRef = parent
         while (parentRef != null) {
-            if (this == parentRef)
+            if (resourceURL == parentRef.resourceURL)
                 throw ResourceRecursionException(resourceURL)
             parentRef = parentRef.parent
         }
         return resolvedLoader(resourcePath, resourceURL).also { it.parent = this }
     }
 
-    override fun equals(other: Any?): Boolean = this === other ||
-            other is ResourceLoader<*, *> && resourcePath == other.resourcePath && resourceURL == other.resourceURL
-
-    override fun hashCode(): Int = resourcePath.hashCode() xor resourceURL.hashCode()
-
     companion object {
 
         val currentDirectory = File(".")
-
         private val separator = File.separatorChar
+        private val defaultFileSystem = FileSystems.getDefault()
+        private val fileSystemCache = Cache<String, FileSystem> { FileSystems.newFileSystem(Paths.get(it), null) }
 
-        private val fileSystemCache = mutableMapOf<String, FileSystem>()
+        fun classPathURL(name: String): URL? = ResourceLoader::class.java.getResource(name)
 
         fun addExtension(s: String, defaultExtension: String?): String = when {
             defaultExtension != null && s.indexOf('.', s.lastIndexOf(separator) + 1) < 0 -> "$s.$defaultExtension"
@@ -167,40 +180,12 @@ abstract class ResourceLoader<T, R : ResourceLoader<T, R>> protected constructor
                 // TODO - consider adding "classpath" scheme (similar to Spring)
                 "jar" -> {
                     val schemeSpecific = uri.schemeSpecificPart
-                    val jarName = schemeSpecific.substringAfter(':').substringBefore('!')
-                    val fs = fileSystemCache[jarName] ?:
-                            FileSystems.newFileSystem(Paths.get(jarName), null).also { fileSystemCache[jarName] = it }
+                    val fs = fileSystemCache[schemeSpecific.substringAfter(':').substringBefore('!')]
                     fs.getPath(schemeSpecific.substringAfter('!'))
                 }
-                "file" -> FileSystems.getDefault().getPath(uri.path)
+                "file" -> defaultFileSystem.getPath(uri.path)
                 else -> null
             }
-        }
-
-        inline fun <T> List<T>.findStartingFrom(index: Int = 0, predicate: (T) -> Boolean): T? {
-            for (i in index until this.size)
-                this[i].let { if (predicate(it)) return it }
-            return null
-        }
-
-        /**
-         * Smart trim - avoid allocating a new string if possible.
-         */
-        fun String.strim(): String {
-            var end = length
-            if (end == 0)
-                return this
-            var start = 0
-            while (true) {
-                if (start >= end)
-                    return ""
-                if (get(start) != ' ')
-                    break
-                start++
-            }
-            while (get(end - 1) == ' ')
-                end--
-            return if (start == 0 && end == length) this else substring(start, end)
         }
 
     }

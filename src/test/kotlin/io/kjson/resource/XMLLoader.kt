@@ -34,7 +34,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Document
 import org.xml.sax.InputSource
 
-class XMLLoader private constructor(resourcePath: Path?, resourceURL: URL) :
+class XMLLoader  constructor(resourcePath: Path?, resourceURL: URL) :
         ResourceLoader<Document, XMLLoader>(resourcePath, resourceURL) {
 
     constructor(resourceFile: File = currentDirectory) : this(resourceFile.toPath(), resourceFile.toURI().toURL())
