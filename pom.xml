@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>3.0</version>
+  <version>3.1</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
@@ -12,7 +12,7 @@
   <parent>
     <groupId>io.kjson</groupId>
     <artifactId>kjson-maven</artifactId>
-    <version>2.1</version>
+    <version>3.0</version>
   </parent>
 
   <properties>
@@ -62,7 +62,7 @@
     <dependency>
       <groupId>net.pwall.util</groupId>
       <artifactId>pipelines</artifactId>
-      <version>3.2</version>
+      <version>4.0</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
@@ -71,12 +71,6 @@
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
       <artifactId>kotlin-reflect</artifactId>
-    </dependency>
-    <dependency>
-      <!-- This is required because kotlin-test-junit 1.6.10 includes junit 4.12 -->
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>

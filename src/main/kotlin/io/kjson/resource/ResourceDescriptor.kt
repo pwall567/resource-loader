@@ -39,7 +39,6 @@ import net.pwall.pipeline.codec.DynamicReader
  * @author  Peter Wall
  */
 data class ResourceDescriptor(
-    // TODO add resourceURL (or reference to ResourceLoader)
     val inputStream: InputStream,
     val url: URL,
     val charsetName: String? = null,

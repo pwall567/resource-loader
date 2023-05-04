@@ -2,6 +2,10 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [3.1] - 2023-05-04
+### Changed
+- `pom.xml`: updated dependencies, updated Kotlin to 1.7.21
+
 ## [3.0] - 2022-12-16
 ### Added
 - `Loader`: general interface for `ResourceLoader`
