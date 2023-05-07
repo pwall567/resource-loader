@@ -2,6 +2,11 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [3.2] - 2023-05-07
+### Changed
+- `ResourceDescriptor`: modified to avoid what appears to be an obscure Kotlin or ktor bug
+- `pom.xml`: updated dependencies
+
 ## [3.1] - 2023-05-04
 ### Changed
 - `pom.xml`: updated dependencies, updated Kotlin to 1.7.21

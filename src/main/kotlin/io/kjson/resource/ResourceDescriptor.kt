@@ -31,6 +31,7 @@ import java.nio.charset.Charset
 import java.time.Instant
 
 import net.pwall.pipeline.codec.DynamicReader
+import java.io.Reader
 
 /**
  * A Resource Descriptor.  This contains all the information known about the resource, to allow the loading function to
@@ -55,11 +56,17 @@ data class ResourceDescriptor(
      * this will be the best option).
      *
      * @param   defaultCharset  the charset to use if the resource does not specify an explicit charset
-     * @return                  a [DynamicReader] (extends `Reader`)
+     * @return                  a [Reader] (but see the comment below)
      */
-    fun getReader(defaultCharset: Charset? = null): DynamicReader {
+    fun getReader(defaultCharset: Charset? = null): Reader {
         val cs = charsetName?.let { try { Charset.forName(it) } catch (_: Exception) { null } } ?: defaultCharset
-        return DynamicReader(inputStream, cs)
+        // For reasons not yet understood, the creation of a DynamicReader object (more specifically the creation of the
+        // DynamicDecoder used by that class) fails with a java.lang.VerifyError: Cannot inherit from final class.
+        // This only happens when running under ktor, and it is possible that that system adds some additional (and in
+        // this case erroneous) class verification.  The temporary solution is to avoid the use of DynamicDecoder with
+        // code below the commented-out line.
+        // return DynamicReader(inputStream, cs)
+        return inputStream.reader(cs ?: Charsets.UTF_8)
     }
 
 }
