@@ -26,12 +26,12 @@
 package io.kjson.resource
 
 import java.io.InputStream
+import java.io.Reader
 import java.net.URL
 import java.nio.charset.Charset
 import java.time.Instant
 
 import net.pwall.pipeline.codec.DynamicReader
-import java.io.Reader
 
 /**
  * A Resource Descriptor.  This contains all the information known about the resource, to allow the loading function to
