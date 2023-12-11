@@ -2,7 +2,7 @@
  * @(#) XMLLoader.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2023 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,43 +25,28 @@
 
 package io.kjson.resource
 
-import java.io.File
-import java.net.URL
-import java.nio.file.Path
+import org.w3c.dom.Document
+import org.xml.sax.InputSource
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
-import org.w3c.dom.Document
-import org.xml.sax.InputSource
+object XMLLoader : ResourceLoader<Document>() {
 
-class XMLLoader  constructor(resourcePath: Path?, resourceURL: URL) :
-        ResourceLoader<Document, XMLLoader>(resourcePath, resourceURL) {
+    override val defaultExtension: String = "xml"
 
-    constructor(resourceFile: File = currentDirectory) : this(resourceFile.toPath(), resourceFile.toURI().toURL())
+    override val defaultMIMEType: String = "text/xml"
 
-    constructor(resourcePath: Path) : this(resourcePath, resourcePath.toUri().toURL())
-
-    constructor(resourceURL: URL) : this(derivePath(resourceURL), resourceURL)
-
-    override val defaultExtension = "xml"
-
-    override fun load(rd: ResourceDescriptor): Document {
-        val inputSource = InputSource(rd.inputStream)
-        inputSource.systemId = resourceURL.toString()
+    override fun load(rd: ResourceDescriptor): Document = rd.inputStream.use { inputStream ->
+        val inputSource = InputSource(inputStream)
+        inputSource.systemId = rd.url.toString()
         rd.charsetName?.let { inputSource.encoding = it }
-        return getDocumentBuilder().parse(inputSource)
+        getDocumentBuilder().parse(inputSource)
     }
 
-    override fun resolvedLoader(resourcePath: Path?, resourceURL: URL) = XMLLoader(resourcePath, resourceURL)
-
-    companion object {
-
-        private val documentBuilderFactory: DocumentBuilderFactory by lazy {
-            DocumentBuilderFactory.newInstance()
-        }
-
-        private fun getDocumentBuilder(): DocumentBuilder = documentBuilderFactory.newDocumentBuilder()
-
+    private val documentBuilderFactory: DocumentBuilderFactory by lazy {
+        DocumentBuilderFactory.newInstance()
     }
+
+    private fun getDocumentBuilder(): DocumentBuilder = documentBuilderFactory.newDocumentBuilder()
 
 }
