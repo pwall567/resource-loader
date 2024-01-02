@@ -2,7 +2,7 @@
  * @(#) Resource.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021, 2022, 2023 Peter Wall
+ * Copyright (c) 2021, 2022, 2023, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
 
 package io.kjson.resource
 
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
@@ -117,11 +118,31 @@ class Resource<T> internal constructor(
 
     override fun hashCode(): Int = resourceLoader.hashCode() xor resourceURL.toString().hashCode()
 
+    /**
+     * Create a form of the URL for this `Resource` suitable for use in debugging and logging messages.
+     */
+    override fun toString(): String = if (resourceURL.protocol != "file") resourceURL.toString() else {
+        val path = resourceURL.path.let { if (it.startsWith("///")) it.drop(2) else it }
+        // some run-time libraries may create URL as file:///path, while others may use file:/path
+        if (path.startsWith(currentPath))
+            path.drop(currentPath.length)
+        else
+            path
+    }
+
     companion object {
 
         private val defaultFileSystem = FileSystems.getDefault()
         private val fileSystemCache = Cache<String, FileSystem> {
             FileSystems.newFileSystem(Paths.get(it), null as ClassLoader?)
+        }
+
+        val currentPath: String = File(".").absolutePath.let {
+            when {
+                it.endsWith("/.") -> it.dropLast(1)
+                it.endsWith('/') -> it
+                else -> "$it/"
+            }
         }
 
         fun classPathURL(name: String): URL? = Resource::class.java.getResource(name)

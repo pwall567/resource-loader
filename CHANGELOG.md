@@ -2,11 +2,15 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [4.1] - 2024-01-03
+### Changed
+- `Resource`: added `toString()`
+
 ## [4.0] - 2023-12-11
 ### Added
 - `ResourceLoader`: new version
 ### Changed
-- `ResourceLoader`: renamed to `Resource`, major changes
+- `Resource`: renamed from `ResourceLoader`, major changes
 - `pom.xml`: updated Kotlin and dependency version
 ### Removed
 - `Loader`: no longer used

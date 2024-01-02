@@ -2,7 +2,7 @@
  * @(#) ResourceLoaderTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2021, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -124,6 +124,13 @@ class ResourceTest {
         expect("test") { root.tagName }
         val sibling = resolved.resolve("test2.xml")
         expect("test2") { sibling.load().documentElement.tagName }
+    }
+
+    @Test fun `should display readable form of URL on toString`() {
+        val resource1 = XMLLoader.resource(File("src/test/resources/xml/test1.xml"))
+        expect("src/test/resources/xml/test1.xml") { resource1.toString() }
+        val resource2 = XMLLoader.resource(URL("http://kjson.io/xml/test9.xml"))
+        expect("http://kjson.io/xml/test9.xml") { resource2.toString() }
     }
 
 }
