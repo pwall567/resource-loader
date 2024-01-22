@@ -2,7 +2,7 @@
  * @(#) ResourceDescriptor.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021, 2022 Peter Wall
+ * Copyright (c) 2021, 2022, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,9 @@ import net.pwall.pipeline.codec.DynamicReader
  * A Resource Descriptor.  This contains all the information known about the resource, to allow the loading function to
  * read the data and apply the correct charset and data conversion required.
  *
+ * The [InputStream] will already have been opened (and in the case of HTTP(S), the headers will have been read and
+ * analysed for details like character set, MIME type _etc._), and it should be closed after use.
+ *
  * @author  Peter Wall
  */
 data class ResourceDescriptor(
@@ -45,7 +48,8 @@ data class ResourceDescriptor(
     val charsetName: String? = null,
     val size: Long? = null,
     val time: Instant? = null,
-    val mimeType: String? = null
+    val mimeType: String? = null,
+    val eTag: String? = null,
 ) {
 
     /**

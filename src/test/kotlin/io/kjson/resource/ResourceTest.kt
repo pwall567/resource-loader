@@ -30,9 +30,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.expect
-import kotlin.test.fail
 
 import java.io.File
+import java.net.MalformedURLException
+import java.net.URI
 import java.net.URL
 import java.nio.file.FileSystems
 
@@ -51,7 +52,8 @@ class ResourceTest {
     }
 
     @Test fun `should create ResourceLoader using classpath`() {
-        val url = Resource.classPathURL("/xml/test1.xml") ?: fail("Resource not found")
+        val url = ResourceTest::class.java.getResource("/xml/test1.xml")
+        assertNotNull(url)
         val resource = XMLLoader.resource(url)
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
@@ -119,10 +121,12 @@ class ResourceTest {
         val jarURL = URL("jar:file://${jarFile.absolutePath}!/xml/")
         val resource = XMLLoader.resource(jarURL)
         val resolved = resource.resolve("test1.xml")
+        expect(URL("jar:file://${jarFile.absolutePath}!/xml/test1.xml")) { resolved.resourceURL }
         val result = resolved.load()
         val root = result.documentElement
         expect("test") { root.tagName }
         val sibling = resolved.resolve("test2.xml")
+        expect(URL("jar:file://${jarFile.absolutePath}!/xml/test2.xml")) { sibling.resourceURL }
         expect("test2") { sibling.load().documentElement.tagName }
     }
 
@@ -131,6 +135,37 @@ class ResourceTest {
         expect("src/test/resources/xml/test1.xml") { resource1.toString() }
         val resource2 = XMLLoader.resource(URL("http://kjson.io/xml/test9.xml"))
         expect("http://kjson.io/xml/test9.xml") { resource2.toString() }
+    }
+
+    @Test fun `should get a classpath URL`() {
+        val url = Resource.classPathURL("/xml/test1.xml")
+        assertNotNull(url)
+        assertTrue(url.protocol == "file" || url.protocol == "jar")
+        assertTrue(url.toString().endsWith("/xml/test1.xml"))
+        val resource = XMLLoader.resource(url)
+        val document = resource.load()
+        expect("test1") { document.documentElement.tagName }
+    }
+
+    @Test fun `check assumptions about URI and URL`() {
+        val uri1 = URI("http://example.com/path/abc.xyz")
+        val uri2 = uri1.resolve("def.xyz")
+        expect(URI("http://example.com/path/def.xyz")) { uri2 }
+
+        val url1 = URL("http://example.com/path/abc.xyz")
+        val url2 = URL(url1, "def.xyz")
+        expect(URL("http://example.com/path/def.xyz")) { url2 }
+
+        val uri3 = URI("nonstd://example.com/path/abc.xyz")
+        val uri4 = uri3.resolve("def.xyz")
+        expect(URI("nonstd://example.com/path/def.xyz")) { uri4 }
+
+        assertFailsWith<MalformedURLException> { URL("nonstd://example.com/path/abc.xyz") }.let {
+            expect("unknown protocol: nonstd") { it.message }
+        }
+        assertFailsWith<MalformedURLException> { uri3.toURL() }.let {
+            expect("unknown protocol: nonstd") { it.message }
+        }
     }
 
 }

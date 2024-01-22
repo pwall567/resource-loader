@@ -2,7 +2,7 @@
  * @(#) ResourceLoaderException.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2021, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,4 +25,4 @@
 
 package io.kjson.resource
 
-open class ResourceLoaderException(message: String): RuntimeException(message)
+open class ResourceLoaderException(message: String, cause: Throwable? = null): RuntimeException(message, cause)

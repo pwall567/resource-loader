@@ -26,19 +26,10 @@
 package io.kjson.resource
 
 import java.io.File
-import java.io.IOException
-import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
-import java.time.Instant
-
-import io.kjson.util.Cache
-import io.kjson.util.HTTPHeader
 
 /**
  * A resource, as described by a [URL] and loaded by a [ResourceLoader].
@@ -46,71 +37,32 @@ import io.kjson.util.HTTPHeader
  * @author  Peter Wall
  */
 class Resource<T> internal constructor(
-    private val resourcePath: Path?,
+    internal val resourcePath: Path?,
     val resourceURL: URL,
     private val resourceLoader: ResourceLoader<T>,
 ) {
 
-    fun load(): T = resourceLoader.load(createResourceDescriptor())
-
-    private fun createResourceDescriptor(): ResourceDescriptor {
-        resourcePath?.let { path ->
-            if (!Files.exists(path) || Files.isDirectory(path))
-                throw ResourceNotFoundException(resourceURL)
-            return ResourceDescriptor(
-                inputStream = Files.newInputStream(path),
-                url = resourceURL,
-                size = Files.size(path),
-                time = Files.getLastModifiedTime(path).toInstant(),
-            )
-        }
-        return resourceURL.openConnection().let { conn ->
-            val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
-            val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
-            val charsetName: String?
-            val mimeType: String?
-            if (conn is HttpURLConnection) {
-                // TODO think about adding support for ifModifiedSince
-                if (!resourceLoader.checkHTTP(conn))
-                    throw ResourceLoaderException("Connection vetoed - $resourceURL")
-                if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                    throw ResourceNotFoundException(resourceURL)
-                if (conn.responseCode != HttpURLConnection.HTTP_OK)
-                    throw IOException("Error status - ${conn.responseCode} - $resourceURL")
-                val contentTypeHeader = conn.contentType?.let { HTTPHeader.create(it) }
-                charsetName = contentTypeHeader?.element()?.parameter("charset")
-                mimeType = contentTypeHeader?.firstElementText()
-            }
-            else {
-                charsetName = null
-                mimeType = conn.contentType
-            }
-            ResourceDescriptor(
-                inputStream = conn.getInputStream(),
-                url = resourceURL,
-                charsetName = charsetName,
-                size = contentLength,
-                time = lastModified,
-                mimeType = mimeType,
-            )
-        }
-    }
+    /**
+     * Load the resource.  This function is delegated to the [ResourceLoader], which will load a resource of the target
+     * type.
+     */
+    fun load(): T = resourceLoader.load(this)
 
     /**
-     * Resolve a name against the current resource loader.
+     * Resolve a relative URL against the current `Resource`, returning a new `Resource`.
      */
-    fun resolve(name: String): Resource<T> {
-        // TODO consider separate functions for resolve(URI) and resolve(Path)
-        val extendedName = resourceLoader.addExtension(name)
-        if (URI(extendedName).scheme == null && resourcePath != null) {
-            val resolved = when {
-                Files.isDirectory(resourcePath) -> resourcePath.resolve(extendedName)
-                else -> resourcePath.resolveSibling(extendedName)
+    fun resolve(relativeURL: String): Resource<T> {
+        val extendedURL = resourceLoader.addExtension(relativeURL)
+        if (URI(extendedURL).scheme == null && resourcePath != null) {
+            // we're navigating entirely within the file system
+            val resolved: Path = when {
+                Files.isDirectory(resourcePath) -> resourcePath.resolve(extendedURL)
+                else -> resourcePath.resolveSibling(extendedURL)
             }
-            return Resource(resolved, resolved.toUri().toURL(), resourceLoader)
+            return resourceLoader.resource(resolved)
         }
-        val resolvedURL = resourceURL.toURI().resolve(extendedName).toURL()
-        return Resource(derivePath(resolvedURL), resolvedURL, resourceLoader)
+        val resolvedURL = resourceURL.toURI().resolve(extendedURL).toURL()
+        return resourceLoader.resource(resolvedURL)
     }
 
     override fun equals(other: Any?): Boolean = this === other || other is Resource<*> &&
@@ -119,7 +71,7 @@ class Resource<T> internal constructor(
     override fun hashCode(): Int = resourceLoader.hashCode() xor resourceURL.toString().hashCode()
 
     /**
-     * Create a form of the URL for this `Resource` suitable for use in debugging and logging messages.
+     * Create a string form of the URL for this `Resource` suitable for use in debugging and logging messages.
      */
     override fun toString(): String = if (resourceURL.protocol != "file") resourceURL.toString() else {
         val path = resourceURL.path.let { if (it.startsWith("///")) it.drop(2) else it }
@@ -132,11 +84,6 @@ class Resource<T> internal constructor(
 
     companion object {
 
-        private val defaultFileSystem = FileSystems.getDefault()
-        private val fileSystemCache = Cache<String, FileSystem> {
-            FileSystems.newFileSystem(Paths.get(it), null as ClassLoader?)
-        }
-
         val currentPath: String = File(".").absolutePath.let {
             when {
                 it.endsWith("/.") -> it.dropLast(1)
@@ -145,28 +92,10 @@ class Resource<T> internal constructor(
             }
         }
 
+        /**
+         * Get a URL for a resource in the classpath (will be either a `file:` or a `jar:` URL).
+         */
         fun classPathURL(name: String): URL? = Resource::class.java.getResource(name)
-
-        fun derivePath(url: URL): Path? {
-            val uri = url.toURI()
-            return when (uri.scheme) {
-                // TODO - consider adding "classpath" scheme (similar to Spring)
-                "jar" -> {
-                    val schemeSpecific = uri.schemeSpecificPart
-                    var start = schemeSpecific.indexOf(':') // probably stepped past "file:"
-                    val bang = schemeSpecific.lastIndexOf('!')
-                    if (start < 0 || bang < 0 || start > bang)
-                        return null
-                    start++
-                    while (start + 2 < bang && schemeSpecific[start] == '/' && schemeSpecific[start + 1] == '/')
-                        start++ // implementations vary in their use of multiple slash characters
-                    val fs = fileSystemCache[schemeSpecific.substring(start, bang)]
-                    fs.getPath(schemeSpecific.substring(bang + 1))
-                }
-                "file" -> defaultFileSystem.getPath(uri.path)
-                else -> null
-            }
-        }
 
     }
 

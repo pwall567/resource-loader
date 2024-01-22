@@ -2,6 +2,15 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [4.2] - 2024-01-22
+### Changed
+- `Resource`, `ResourceLoader`: moved functions from `Resource` to `ResourceLoader` to allow them to be overridden by
+  implementing classes
+- `ResourceLoaderException`: added `cause`
+- `ResourceDescriptor`: added `eTag`
+### Removed
+- `ResourceRecursionException`: unused since version 4.0
+
 ## [4.1] - 2024-01-03
 ### Changed
 - `Resource`: added `toString()`

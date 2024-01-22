@@ -32,7 +32,7 @@ package io.kjson.util
  * @param   K       the key type
  * @param   V       the value type
  */
-class Cache<K, V>(
+class Cache<K : Any, out V : Any>(
     /** The initialisation function */
     private val init: (K) -> V
 ) {

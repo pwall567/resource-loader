@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>4.1</version>
+  <version>4.2</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
