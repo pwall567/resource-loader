@@ -1,8 +1,8 @@
 # resource-loader
 
-[![Build Status](https://travis-ci.com/pwall567/resource-loader.svg?branch=main)](https://travis-ci.com/github/pwall567/resource-loader)
+[![Build Status](https://github.com/pwall567/resource-loader/actions/workflows/build.yml/badge.svg)](https://github.com/pwall567/resource-loader/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Kotlin](https://img.shields.io/static/v1?label=Kotlin&message=v1.8.22&color=7f52ff&logo=kotlin&logoColor=7f52ff)](https://github.com/JetBrains/kotlin/releases/tag/v1.8.22)
+[![Kotlin](https://img.shields.io/static/v1?label=Kotlin&message=v1.9.24&color=7f52ff&logo=kotlin&logoColor=7f52ff)](https://github.com/JetBrains/kotlin/releases/tag/v1.9.24)
 [![Maven Central](https://img.shields.io/maven-central/v/io.kjson/resource-loader?label=Maven%20Central)](https://search.maven.org/search?q=g:%22io.kjson%22%20AND%20a:%22resource-loader%22)
 
 Resource loading mechanism
@@ -30,7 +30,7 @@ All of the previous functionality should be available, but the means of accessin
 For anyone wishing to use this library, a good example is the `XMLLoader` object in the tests in the project source.
 
 `XMLLoader` extends the base class `ResourceLoader`, providing two overriding values and one function:
-- `defaultExtension`: the default extension to be be used (in this case "`xml`").
+- `defaultExtension`: the default extension to be be used (in this case &ldquo;`xml`&rdquo;).
 - `defaultMIMEType`: the default MIME type
 - `load`: a function to load a resource using the information provided in a `ResourceDescriptor` (which includes an
   `InputStream`, the URL and other details about the resource if available)
@@ -52,25 +52,25 @@ More documentation to follow...
 
 ## Dependency Specification
 
-The latest version of the library is 4.2, and it may be obtained from the Maven Central repository.
+The latest version of the library is 4.3, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>4.2</version>
+      <version>4.3</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:4.2'
+    implementation 'io.kjson:resource-loader:4.3'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:4.2")
+    implementation("io.kjson:resource-loader:4.3")
 ```
 
 Peter Wall
 
-2024-01-22
+2024-07-11
