@@ -52,25 +52,25 @@ More documentation to follow...
 
 ## Dependency Specification
 
-The latest version of the library is 4.3, and it may be obtained from the Maven Central repository.
+The latest version of the library is 5.0, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>4.3</version>
+      <version>5.0</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:4.3'
+    implementation 'io.kjson:resource-loader:5.0'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:4.3")
+    implementation("io.kjson:resource-loader:5.0")
 ```
 
 Peter Wall
 
-2024-07-11
+2024-07-25

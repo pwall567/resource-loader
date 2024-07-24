@@ -2,6 +2,10 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [5.0] - 2024-07-24
+### Changed
+- `ResourceLoader`: removed `checkHTTP()` function; replaced with `ConnectionFilter` mechanism
+
 ## [4.3] - 2024-07-11
 ### Added
 - `build.yml`, `deploy.yml`: converted project to GitHub Actions
