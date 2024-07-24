@@ -47,6 +47,8 @@ import io.kjson.util.Cache
  */
 abstract class ResourceLoader<T> {
 
+    private val connectionFilters = mutableListOf<(HttpURLConnection) -> HttpURLConnection?>()
+
     open val defaultExtension: String? = null
 
     open val defaultMIMEType: String? = null
@@ -56,13 +58,6 @@ abstract class ResourceLoader<T> {
      * [ResourceDescriptor] and return the internal form.
      */
     abstract fun load(rd: ResourceDescriptor): T
-
-    /**
-     * Check and possibly veto an HTTP connection.  This function is called after the connection has been opened but
-     * before the `connect()` has been performed, allowing the implementing class to add request headers (for example,
-     * `Authorization`) and possibly to veto the connection depending on the response headers or other factors.
-     */
-    open fun checkHTTP(conn: HttpURLConnection): Boolean = true
 
     /**
      * Get a [Resource], specifying a [File].
@@ -86,6 +81,11 @@ abstract class ResourceLoader<T> {
     open fun load(resource: Resource<T>): T = load(openResource(resource))
 
     /**
+     * Load the resource identified by the specified [URL].
+     */
+    fun load(resourceURL: URL): T = load(resource(resourceURL))
+
+    /**
      * Open a [Resource] for reading.  This function is open for extension to allow non-standard URLs to be mapped to
      * actual resources.  The result of this function is a [ResourceDescriptor], which contains an open `InputStream`
      * and all the metadata known about the resource.
@@ -103,39 +103,37 @@ abstract class ResourceLoader<T> {
                 )
             }
             val conn: URLConnection = resource.resourceURL.openConnection()
-            val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
-            val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
-            val charsetName: String?
-            val mimeType: String?
-            val eTag: String?
             if (conn is HttpURLConnection) {
+                var httpConn: HttpURLConnection = conn
+                for (filter in connectionFilters)
+                    httpConn = filter(httpConn) ?:
+                        throw ResourceLoaderException("Connection vetoed - ${resource.resourceURL}")
                 // TODO think about adding support for ifModifiedSince / ETag
-                if (!checkHTTP(conn))
-                    throw ResourceLoaderException("Connection vetoed - ${resource.resourceURL}")
-                // TODO would this be better handled by the function to substitute URLs?
-                if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                if (httpConn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
                     throw ResourceNotFoundException(resource.resourceURL)
-                if (conn.responseCode != HttpURLConnection.HTTP_OK)
-                    throw IOException("Error status - ${conn.responseCode} - ${resource.resourceURL}")
-                val contentTypeHeader = conn.contentType?.let { HTTPHeader.create(it) }
-                charsetName = contentTypeHeader?.element()?.parameter("charset")
-                mimeType = contentTypeHeader?.firstElementText()
-                eTag = conn.getHeaderField("etag")
+                if (httpConn.responseCode != HttpURLConnection.HTTP_OK)
+                    throw IOException("Error status - ${httpConn.responseCode} - ${resource.resourceURL}")
+                val contentLength = httpConn.contentLengthLong.takeIf { it >= 0 }
+                val lastModified = httpConn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
+                val contentTypeHeader = httpConn.contentType?.let { HTTPHeader.create(it) }
+                val charsetName: String? = contentTypeHeader?.element()?.parameter("charset")
+                val mimeType: String? = contentTypeHeader?.firstElementText()
+                return ResourceDescriptor(
+                    inputStream = httpConn.inputStream,
+                    url = resource.resourceURL,
+                    charsetName = charsetName,
+                    size = contentLength,
+                    time = lastModified,
+                    mimeType = mimeType,
+                    eTag = httpConn.getHeaderField("etag"),
+                )
             }
             else {
-                charsetName = null
-                mimeType = conn.contentType
-                eTag = null
+                return ResourceDescriptor(
+                    inputStream = conn.getInputStream(),
+                    url = resource.resourceURL,
+                )
             }
-            return ResourceDescriptor(
-                inputStream = conn.getInputStream(),
-                url = resource.resourceURL,
-                charsetName = charsetName,
-                size = contentLength,
-                time = lastModified,
-                mimeType = mimeType,
-                eTag = eTag,
-            )
         }
         catch (rle: ResourceLoaderException) {
             throw rle
@@ -148,6 +146,28 @@ abstract class ResourceLoader<T> {
     fun addExtension(s: String): String = when {
         defaultExtension != null && s.indexOf('.', s.lastIndexOf(File.separatorChar) + 1) < 0 -> "$s.$defaultExtension"
         else -> s
+    }
+
+    fun addConnectionFilter(filter: (HttpURLConnection) -> HttpURLConnection?) {
+        connectionFilters.add(filter)
+    }
+
+    fun addAuthorizationFilter(host: String, headerName: String, headerValue: String?) {
+        addConnectionFilter(AuthorizationFilter(host, headerName, headerValue))
+    }
+
+    class AuthorizationFilter(
+        private val host: String,
+        private val headerName: String,
+        private val headerValue: String?,
+    ) : (HttpURLConnection) -> HttpURLConnection? {
+
+        override fun invoke(httpConn: HttpURLConnection): HttpURLConnection {
+            if (httpConn.url.matchesHost(host))
+                httpConn.addRequestProperty(headerName, headerValue)
+            return httpConn
+        }
+
     }
 
     companion object {
@@ -176,6 +196,11 @@ abstract class ResourceLoader<T> {
                 else -> null
             }
         }
+
+        fun URL.matchesHost(target: String): Boolean = if (target.startsWith("*."))
+            host.endsWith(target.substring(1)) || host == target.substring(2)
+        else
+            host == target
 
     }
 

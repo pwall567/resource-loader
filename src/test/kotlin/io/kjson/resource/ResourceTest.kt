@@ -37,6 +37,13 @@ import java.net.URI
 import java.net.URL
 import java.nio.file.FileSystems
 
+import io.ktor.server.application.call
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+
 class ResourceTest {
 
     @Test fun `should create resource using File`() {
@@ -166,6 +173,22 @@ class ResourceTest {
         assertFailsWith<MalformedURLException> { uri3.toURL() }.let {
             expect("unknown protocol: nonstd") { it.message }
         }
+    }
+
+    @Test fun `should add request headers in connection filter`() {
+        XMLLoader.addConnectionFilter(ResourceLoader.AuthorizationFilter("localhost", "X-Test", "hippopotamus"))
+        embeddedServer(Netty, port = 8080) {
+            routing {
+                get("/testhdr.xml") {
+                    val header = call.request.headers["X-Test"]
+                    call.respondText("<test1>$header</test1>")
+                }
+            }
+        }.start()
+        val resource = XMLLoader.resource(URL("http://localhost:8080/testhdr.xml"))
+        val document = resource.load()
+        expect("test1") { document.documentElement.tagName }
+        expect("hippopotamus") { document.documentElement.textContent }
     }
 
 }

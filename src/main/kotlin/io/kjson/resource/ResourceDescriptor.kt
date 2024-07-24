@@ -53,7 +53,7 @@ data class ResourceDescriptor(
 ) {
 
     /**
-     * Get a `Reader` to read the resource.  If the resource specifies an explicit charset name, the function will
+     * Get a [Reader] to read the resource.  If the resource specifies an explicit charset name, the function will
      * attempt to locate a charset with that name, and if it is successful that charset will be used.  If the resource
      * does not specify an explicit charset name and the `defaultCharset` parameter is provided, that will be used.  If
      * neither is provided, the [DynamicReader] will choose the charset based on the content of the data (in most cases
@@ -64,13 +64,7 @@ data class ResourceDescriptor(
      */
     fun getReader(defaultCharset: Charset? = null): Reader {
         val cs = charsetName?.let { try { Charset.forName(it) } catch (_: Exception) { null } } ?: defaultCharset
-        // For reasons not yet understood, the creation of a DynamicReader object (more specifically the creation of the
-        // DynamicDecoder used by that class) fails with a java.lang.VerifyError: Cannot inherit from final class.
-        // This only happens when running under ktor, and it is possible that that system adds some additional (and in
-        // this case erroneous) class verification.  The temporary solution is to avoid the use of DynamicDecoder with
-        // code below the commented-out line.
-        // return DynamicReader(inputStream, cs)
-        return inputStream.reader(cs ?: Charsets.UTF_8)
+        return DynamicReader(inputStream, cs)
     }
 
 }
