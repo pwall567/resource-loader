@@ -143,17 +143,33 @@ abstract class ResourceLoader<T> {
         }
     }
 
+    /**
+     * Add the default extension to a file name or URL string.
+     */
     fun addExtension(s: String): String = when {
         defaultExtension != null && s.indexOf('.', s.lastIndexOf(File.separatorChar) + 1) < 0 -> "$s.$defaultExtension"
         else -> s
     }
 
+    /**
+     * Add a connection filter for HTTP connections.
+     */
     fun addConnectionFilter(filter: (HttpURLConnection) -> HttpURLConnection?) {
         connectionFilters.add(filter)
     }
 
+    /**
+     * Add an authorization filter for HTTP connections.
+     */
     fun addAuthorizationFilter(host: String, headerName: String, headerValue: String?) {
         addConnectionFilter(AuthorizationFilter(host, headerName, headerValue))
+    }
+
+    /**
+     * Add a redirection filter for HTTP connections.
+     */
+    fun addRedirectionFilter(fromHost: String, fromPort: Int = -1, toHost: String, toPort: Int = -1) {
+        addConnectionFilter(RedirectionFilter(fromHost, fromPort, toHost, toPort))
     }
 
     class AuthorizationFilter(
@@ -170,6 +186,23 @@ abstract class ResourceLoader<T> {
 
     }
 
+    class RedirectionFilter(
+        private val fromHost: String,
+        private val fromPort: Int = -1,
+        private val toHost: String,
+        private val toPort: Int = -1,
+    ) : (HttpURLConnection) -> HttpURLConnection? {
+
+        override fun invoke(httpCon: HttpURLConnection): HttpURLConnection {
+            val url = httpCon.url
+            return if (!url.matchesHost(fromHost) || url.port != fromPort)
+                httpCon
+            else
+                URL(url.protocol, toHost, toPort, url.file).openConnection() as HttpURLConnection
+        }
+
+    }
+
     companion object {
 
         private val defaultFileSystem = FileSystems.getDefault()
@@ -178,13 +211,15 @@ abstract class ResourceLoader<T> {
         }
 
         fun derivePath(url: URL): Path? {
+            // TODO move this into the main class body, and allow relative URL to be resolved against a "base" URL,
+            //      established when the ResourceLoader is constructed (default being file:///.)
             val uri = url.toURI()
             return when (uri.scheme) {
                 "jar" -> {
                     val schemeSpecific = uri.schemeSpecificPart
                     var start = schemeSpecific.indexOf(':') // probably stepped past "file:"
                     val bang = schemeSpecific.lastIndexOf('!')
-                    if (start < 0 || bang < 0 || start > bang)
+                    if (start !in 0 until bang)
                         return null
                     start++
                     while (start + 2 < bang && schemeSpecific[start] == '/' && schemeSpecific[start + 1] == '/')

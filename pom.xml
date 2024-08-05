@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>5.0</version>
+  <version>5.1</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
@@ -78,6 +78,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.17.1</version>
+      <scope>test</scope>
+      <!-- pinning this version to avoid CVE in ktor -->
+    </dependency>
+    <dependency>
       <groupId>io.ktor</groupId>
       <artifactId>ktor-server-test-host-jvm</artifactId>
       <version>2.3.12</version>
@@ -87,6 +94,18 @@
       <groupId>io.ktor</groupId>
       <artifactId>ktor-server-netty-jvm</artifactId>
       <version>2.3.12</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.13</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
+      <version>2.0.13</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

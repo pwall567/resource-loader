@@ -2,9 +2,15 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [5.1] - 2024-08-06
+### Changed
+- `ResourceLoader`: added `RedirectionFilter`
+- `pom.xml`: added null implementation of `slf4j` (test); pinned version of `commons-codec` (also test)
+
 ## [5.0] - 2024-07-24
 ### Changed
-- `ResourceLoader`: removed `checkHTTP()` function; replaced with `ConnectionFilter` mechanism
+- `ResourceLoader`: removed `checkHTTP()` function; replaced with `ConnectionFilter` mechanism (including
+  `AuthorizationFilter`)
 
 ## [4.3] - 2024-07-11
 ### Added

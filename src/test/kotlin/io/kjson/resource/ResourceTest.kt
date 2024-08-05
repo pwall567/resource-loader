@@ -191,4 +191,19 @@ class ResourceTest {
         expect("hippopotamus") { document.documentElement.textContent }
     }
 
+    @Test fun `should redirect request in connection filter`() {
+        XMLLoader.addRedirectionFilter(fromHost = "example.com", toHost = "localhost", toPort = 8081)
+        embeddedServer(Netty, port = 8081) {
+            routing {
+                get("/test.xml") {
+                    call.respondText("<test1>Redirect</test1>")
+                }
+            }
+        }.start()
+        val resource = XMLLoader.resource(URL("http://example.com/test.xml"))
+        val document = resource.load()
+        expect("test1") { document.documentElement.tagName }
+        expect("Redirect") { document.documentElement.textContent }
+    }
+
 }

@@ -29,13 +29,45 @@ All of the previous functionality should be available, but the means of accessin
 
 For anyone wishing to use this library, a good example is the `XMLLoader` object in the tests in the project source.
 
-`XMLLoader` extends the base class `ResourceLoader`, providing two overriding values and one function:
-- `defaultExtension`: the default extension to be be used (in this case &ldquo;`xml`&rdquo;).
+```kotlin
+object XMLLoader : ResourceLoader<Document>() {
+
+    override val defaultExtension: String = "xml"
+
+    override val defaultMIMEType: String = "text/xml"
+
+    override fun load(rd: ResourceDescriptor): Document = rd.inputStream.use { inputStream ->
+        val inputSource = InputSource(inputStream)
+        inputSource.systemId = rd.url.toString()
+        rd.charsetName?.let { inputSource.encoding = it }
+        getDocumentBuilder().parse(inputSource)
+    }
+
+    private val documentBuilderFactory: DocumentBuilderFactory by lazy {
+        DocumentBuilderFactory.newInstance()
+    }
+
+    private fun getDocumentBuilder(): DocumentBuilder = documentBuilderFactory.newDocumentBuilder()
+
+}
+```
+
+`XMLLoader` extends the abstract base class `ResourceLoader`, specifying the result type to be the XML `Document` class,
+  and providing two overriding values and one function (only the function is required; the values are optional):
+- `defaultExtension`: the default extension to be used (in this case &ldquo;`xml`&rdquo;)
 - `defaultMIMEType`: the default MIME type
 - `load`: a function to load a resource using the information provided in a `ResourceDescriptor` (which includes an
   `InputStream`, the URL and other details about the resource if available)
 
-The `ResourceLoader` provides three functions to get a `Resource`, specifying a `File`, a `Path` or a `URL`.
+## More Detail
+
+The `ResourceLoader` is capable of handling resources from three source types, each with its own type of URL, and each
+with its own set of complications:
+1. A classic network resource, with a URL starting with `http:` or `https:`
+2. A file in the local file system, identified by a `File` or a `Path`, or located using a `file:` URL
+3. A file in a JAR, identified by a `jar:` URL
+
+The `resource` function of `ResourceLoader` will accept a `URL`, a `File` or a `Path`, and return a `Resource`.
 The `Resource` may then be used to load the resource, or as a basis for resolving a relative address.
 
 (At this point it's worth noting that the `Class.getResource()` function from the standard JVM library returns a `URL`
@@ -50,27 +82,75 @@ this can then be used to load the actual resource, and also may be used to locat
 
 More documentation to follow...
 
+## Filters
+
+When accessing a resource by means of a HTTP URL, a filter mechanism allows the `HttpURLConnection` to be modified (for
+example, by adding headers to the request) before it is used.
+Alternatively, a different `HttpURLConnection` may be substituted for the original (thereby redirecting to a different
+resource location), or the filter may return `null` to veto the connection.
+
+To add a filter:
+```kotlin
+    resourceLoader.addConnectionFilter { if (it.url.protocol == "https") it else null }
+```
+
+The parameter to the filter is the `HttpURLConnection`, and the return value is the same `HttpURLConnection` (possibly
+modified), a replacement `HttpURLConnection` or `null`.
+The above example blocks any access other than via "`https`".
+
+### Authorization Filter
+
+The `AuthorizationFilter` allows a single request header to be added to the connection.
+If multiple headers are required, multiple filters may be used.
+
+A convenience function will add an `AuthorizationFilter`:
+```kotlin
+    resourceLoader.addAuthorizationFilter(
+        host = "*.example.com",
+        headerName = "Authorization",
+        headerValue = accessToken,
+    )
+```
+This will cause an "`Authorization`" header to be added to all requests to hosts ending with "`.example.com`" (this is
+not a full wildcard mechanism; only the exact name or a name suffix preceded by "`*.`" may be used).
+
+### Redirection Filter
+
+The `RedirectionFilter` allows requests to a nominated host to be redirected to a substitute location.
+When used in conjunction with an `AuthorizationFilter`, the `RedirectionFilter` must be added first.
+
+Again, a convenience function will add the filter:
+```kotlin
+    resourceLoader.addRedirectionFilter(
+        fromHost = "example.com",
+        fromPort = -1, // -1 means unspecified
+        toHost = "localhost",
+        toPort = 8080,
+    )
+```
+This will cause all requests to "`example.com`" to be redirected to "`localhost:8080`".
+
 ## Dependency Specification
 
-The latest version of the library is 5.0, and it may be obtained from the Maven Central repository.
+The latest version of the library is 5.1, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>5.0</version>
+      <version>5.1</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:5.0'
+    implementation 'io.kjson:resource-loader:5.1'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:5.0")
+    implementation("io.kjson:resource-loader:5.1")
 ```
 
 Peter Wall
 
-2024-07-25
+2024-08-06
