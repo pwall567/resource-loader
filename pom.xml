@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>5.1</version>
+  <version>5.2</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
@@ -63,6 +63,11 @@
       <groupId>net.pwall.util</groupId>
       <artifactId>pipelines</artifactId>
       <version>5.2</version>
+    </dependency>
+    <dependency>
+      <groupId>net.pwall.text</groupId>
+      <artifactId>wildcard</artifactId>
+      <version>1.0</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>

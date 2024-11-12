@@ -2,6 +2,11 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [5.2] - 2024-11-08
+### Changed
+- `ResourceLoader`: re-worked `ConnectionFilter` mechanism, added `PrefixRedirectionFilter`
+- `Resource`, `ResourceLoader`: changed to accommodate Windows path format
+
 ## [5.1] - 2024-08-06
 ### Changed
 - `ResourceLoader`: added `RedirectionFilter`

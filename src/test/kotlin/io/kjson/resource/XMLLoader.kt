@@ -30,7 +30,7 @@ import org.xml.sax.InputSource
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
-object XMLLoader : ResourceLoader<Document>() {
+class XMLLoader : ResourceLoader<Document>() {
 
     override val defaultExtension: String = "xml"
 

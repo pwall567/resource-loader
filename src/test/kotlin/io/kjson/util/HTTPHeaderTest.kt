@@ -31,18 +31,18 @@ import kotlin.test.expect
 class HTTPHeaderTest {
 
     @Test fun `should create simple HTTPHeader`() {
-        val contentTypeHeader = HTTPHeader.create("application/json")
+        val contentTypeHeader = HTTPHeader.parse("application/json")
         expect("application/json") { contentTypeHeader.firstElementText() }
     }
 
     @Test fun `should create HTTPHeader with parameter`() {
-        val contentTypeHeader = HTTPHeader.create("application/json;charset=UTF-8")
+        val contentTypeHeader = HTTPHeader.parse("application/json;charset=UTF-8")
         expect("application/json") { contentTypeHeader.firstElementText() }
         expect("UTF-8") { contentTypeHeader.element().parameter("charset") }
     }
 
     @Test fun `should create HTTPHeader with multiple elements`() {
-        val acceptHeader = HTTPHeader.create("text/html; q=1.0, text/*; q=0.8, image/gif; q=0.6, image/jpeg; q=0.6," +
+        val acceptHeader = HTTPHeader.parse("text/html; q=1.0, text/*; q=0.8, image/gif; q=0.6, image/jpeg; q=0.6," +
                 " image/*; q=0.5, */*; q=0.1")
         expect(6) { acceptHeader.elements.size }
         expect("text/html") { acceptHeader.elements[0].values[0] }

@@ -10,8 +10,8 @@ Resource loading mechanism
 ## Background
 
 There are many contexts in which the use of relative URLs to locate resources is important.
-In a web page, any `href` attribute is resolved relative to the URL of the page itself (_i.e._ if the document's URL is
-`http://kjson.io/testing/abc1.html`, then `href="abc2.html"` resolves to `http://kjson.io/testing/abc2.html`).
+In a web page, any `href` attribute is resolved relative to the URL of the page itself (_i.e._ if the document&rsquo;s
+URL is `http://kjson.io/testing/abc1.html`, then `href="abc2.html"` resolves to `http://kjson.io/testing/abc2.html`).
 In JSON Schema, a `$ref` property is resolved relative to the containing schema.
 The use of relative references means that bundles of resources can be packaged together and retain their ability to
 cross-reference each other.
@@ -67,7 +67,8 @@ with its own set of complications:
 2. A file in the local file system, identified by a `File` or a `Path`, or located using a `file:` URL
 3. A file in a JAR, identified by a `jar:` URL
 
-The `resource` function of `ResourceLoader` will accept a `URL`, a `File` or a `Path`, and return a `Resource`.
+The `resource` function of `ResourceLoader` will accept a <span title="java.net.URL">`URL`</span>, a
+<span title="java.io.File">`File`</span> or a <span title="java.nio.file.Path">`Path`</span>, and return a `Resource`.
 The `Resource` may then be used to load the resource, or as a basis for resolving a relative address.
 
 (At this point it's worth noting that the `Class.getResource()` function from the standard JVM library returns a `URL`
@@ -84,19 +85,22 @@ More documentation to follow...
 
 ## Filters
 
-When accessing a resource by means of a HTTP URL, a filter mechanism allows the `HttpURLConnection` to be modified (for
-example, by adding headers to the request) before it is used.
-Alternatively, a different `HttpURLConnection` may be substituted for the original (thereby redirecting to a different
-resource location), or the filter may return `null` to veto the connection.
+Regardless of the way in which a `Resource` is obtained, access to the underlying resource will be by means of the URL,
+and filters may be used to modify, replace or block the connection.
 
 To add a filter:
 ```kotlin
-    resourceLoader.addConnectionFilter { if (it.url.protocol == "https") it else null }
+    resourceLoader.addConnectionFilter { if (it !is HttpURLConnection || it.url.host in acceptableHosts) it else null }
 ```
 
-The parameter to the filter is the `HttpURLConnection`, and the return value is the same `HttpURLConnection` (possibly
-modified), a replacement `HttpURLConnection` or `null`.
-The above example blocks any access other than via "`https`".
+The signature of the filter is `(URLConnection) -> URLConnection?`, and there are, in effect, four options for the
+return value:
+1. The input value may be returned unmodified.
+2. The input `URLConnection` may be modified (for example, by adding headers to an `HttpURLConnection`) and returned.
+3. A new `URLConnection` may be returned in place of the original (for example, substituting a file-based
+   `URLConnection` for an `HttpURLConnection`).
+4. A return value of `null` will cause the connection to be vetoed; this may be used to ensure that external references
+   in included files may be blocked from accessing resources from untrusted sites (see the example above).
 
 ### Authorization Filter
 
@@ -111,8 +115,9 @@ A convenience function will add an `AuthorizationFilter`:
         headerValue = accessToken,
     )
 ```
-This will cause an "`Authorization`" header to be added to all requests to hosts ending with "`.example.com`" (this is
-not a full wildcard mechanism; only the exact name or a name suffix preceded by "`*.`" may be used).
+This will cause an "`Authorization`" header to be added to all requests to hosts with names ending with
+&ldquo;`.example.com`&rdquo; (standard wildcard rules apply &ndash; `?` matches a single character and `*` matches zero
+or more characters).
 
 ### Redirection Filter
 
@@ -130,27 +135,42 @@ Again, a convenience function will add the filter:
 ```
 This will cause all requests to "`example.com`" to be redirected to "`localhost:8080`".
 
+### Prefix-Based Redirection Filter
+
+The `PrefixRedirectionFilter` allows requests to be redirected based on the prefix substring of the URL.
+This may be used, for example, to redirect external HTTP(S) calls to the local filesystem.
+
+Again, a convenience function will add the filter:
+```kotlin
+    resourceLoader.addRedirectionFilter(
+        fromPrefix = "https://example.com/api/schema/",
+        toPrefix = localDirectory.absoluteFile.toURI().toString(),
+    )
+```
+This will cause all requests to addresses starting with `https://example.com/api/schema/` to be redirected to a location
+in the local filesystem described by `localDirectory` (a `java.io.File`).
+
 ## Dependency Specification
 
-The latest version of the library is 5.1, and it may be obtained from the Maven Central repository.
+The latest version of the library is 5.2, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>5.1</version>
+      <version>5.2</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:5.1'
+    implementation 'io.kjson:resource-loader:5.2'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:5.1")
+    implementation("io.kjson:resource-loader:5.2")
 ```
 
 Peter Wall
 
-2024-08-06
+2024-08-13

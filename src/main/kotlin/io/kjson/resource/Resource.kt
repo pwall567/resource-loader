@@ -74,8 +74,7 @@ class Resource<T> internal constructor(
      * Create a string form of the URL for this `Resource` suitable for use in debugging and logging messages.
      */
     override fun toString(): String = if (resourceURL.protocol != "file") resourceURL.toString() else {
-        val path = resourceURL.path.let { if (it.startsWith("///")) it.drop(2) else it }
-        // some run-time libraries may create URL as file:///path, while others may use file:/path
+        val path = resourceURL.path
         if (path.startsWith(currentPath))
             path.drop(currentPath.length)
         else
@@ -84,8 +83,9 @@ class Resource<T> internal constructor(
 
     companion object {
 
-        val currentPath: String = File(".").absolutePath.let {
+        val currentPath: String = File(".").absoluteFile.toURI().path.let {
             when {
+                it.endsWith("/./") -> it.dropLast(2)
                 it.endsWith("/.") -> it.dropLast(1)
                 it.endsWith('/') -> it
                 else -> "$it/"

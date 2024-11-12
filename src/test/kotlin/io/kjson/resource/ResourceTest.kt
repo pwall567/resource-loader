@@ -47,13 +47,13 @@ import io.ktor.server.routing.routing
 class ResourceTest {
 
     @Test fun `should create resource using File`() {
-        val resource = XMLLoader.resource(File("src/test/resources/xml/test1.xml"))
+        val resource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
     }
 
     @Test fun `should create ResourceLoader using Path`() {
-        val resource = XMLLoader.resource(FileSystems.getDefault().getPath("src/test/resources/xml/test1.xml"))
+        val resource = XMLLoader().resource(FileSystems.getDefault().getPath("src/test/resources/xml/test1.xml"))
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
     }
@@ -61,13 +61,13 @@ class ResourceTest {
     @Test fun `should create ResourceLoader using classpath`() {
         val url = ResourceTest::class.java.getResource("/xml/test1.xml")
         assertNotNull(url)
-        val resource = XMLLoader.resource(url)
+        val resource = XMLLoader().resource(url)
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
     }
 
     @Test fun `should resolve sibling`() {
-        val resource = XMLLoader.resource(File("src/test/resources/xml/test1.xml"))
+        val resource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         with(resource.load()) {
             expect("test1") { documentElement.tagName }
         }
@@ -77,7 +77,7 @@ class ResourceTest {
     }
 
     @Test fun `should resolve child`() {
-        val resource = XMLLoader.resource(File("src/test/resources/xml/"))
+        val resource = XMLLoader().resource(File("src/test/resources/xml/"))
         with(resource.resolve("test1.xml").load()) {
             expect("test1") { documentElement.tagName }
         }
@@ -87,21 +87,21 @@ class ResourceTest {
     }
 
     @Test fun `should read from remote URL`() {
-        val resource = XMLLoader.resource(URL("http://kjson.io/xml/"))
+        val resource = XMLLoader().resource(URL("http://kjson.io/xml/"))
         val resolved = resource.resolve("test1.xml")
         expect("http://kjson.io/xml/test1.xml") { resolved.resourceURL.toString() }
         expect("test") { resolved.load().documentElement.tagName }
     }
 
     @Test fun `should switch from local file to remote URL`() {
-        val resource = XMLLoader.resource(File("src/test/resources/xml/"))
+        val resource = XMLLoader().resource(File("src/test/resources/xml/"))
         expect("test1") { resource.resolve("test1.xml").load().documentElement.tagName }
         expect("test") { resource.resolve("http://kjson.io/xml/test1.xml").load().documentElement.tagName }
     }
 
     @Test fun `should throw not-found exception when resource not found`() {
         assertFailsWith<ResourceNotFoundException> {
-            XMLLoader.resource(File("src/test/resources/xml/test9.xml")).load()
+            XMLLoader().resource(File("src/test/resources/xml/test9.xml")).load()
         }.let {
             with(it.message) {
                 assertNotNull(this)
@@ -113,7 +113,7 @@ class ResourceTest {
 
     @Test fun `should throw not-found exception when remote URL not found`() {
         assertFailsWith<ResourceNotFoundException> {
-            XMLLoader.resource(URL("http://kjson.io/xml/test9.xml")).load()
+            XMLLoader().resource(URL("http://kjson.io/xml/test9.xml")).load()
         }.let {
             with(it.message) {
                 assertNotNull(this)
@@ -125,22 +125,22 @@ class ResourceTest {
 
     @Test fun `should read from JAR file`() {
         val jarFile = File("src/test/resources/test.jar")
-        val jarURL = URL("jar:file://${jarFile.absolutePath}!/xml/")
-        val resource = XMLLoader.resource(jarURL)
+        val jarURL = URL("jar:${jarFile.absoluteFile.toURI()}!/xml/")
+        val resource = XMLLoader().resource(jarURL)
         val resolved = resource.resolve("test1.xml")
-        expect(URL("jar:file://${jarFile.absolutePath}!/xml/test1.xml")) { resolved.resourceURL }
+        expect(URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test1.xml")) { resolved.resourceURL }
         val result = resolved.load()
         val root = result.documentElement
         expect("test") { root.tagName }
         val sibling = resolved.resolve("test2.xml")
-        expect(URL("jar:file://${jarFile.absolutePath}!/xml/test2.xml")) { sibling.resourceURL }
+        expect(URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test2.xml")) { sibling.resourceURL }
         expect("test2") { sibling.load().documentElement.tagName }
     }
 
     @Test fun `should display readable form of URL on toString`() {
-        val resource1 = XMLLoader.resource(File("src/test/resources/xml/test1.xml"))
+        val resource1 = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         expect("src/test/resources/xml/test1.xml") { resource1.toString() }
-        val resource2 = XMLLoader.resource(URL("http://kjson.io/xml/test9.xml"))
+        val resource2 = XMLLoader().resource(URL("http://kjson.io/xml/test9.xml"))
         expect("http://kjson.io/xml/test9.xml") { resource2.toString() }
     }
 
@@ -149,7 +149,7 @@ class ResourceTest {
         assertNotNull(url)
         assertTrue(url.protocol == "file" || url.protocol == "jar")
         assertTrue(url.toString().endsWith("/xml/test1.xml"))
-        val resource = XMLLoader.resource(url)
+        val resource = XMLLoader().resource(url)
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
     }
@@ -176,7 +176,8 @@ class ResourceTest {
     }
 
     @Test fun `should add request headers in connection filter`() {
-        XMLLoader.addConnectionFilter(ResourceLoader.AuthorizationFilter("localhost", "X-Test", "hippopotamus"))
+        val xmlLoader = XMLLoader()
+        xmlLoader.addAuthorizationFilter("localhost", "X-Test", "hippopotamus")
         embeddedServer(Netty, port = 8080) {
             routing {
                 get("/testhdr.xml") {
@@ -185,14 +186,15 @@ class ResourceTest {
                 }
             }
         }.start()
-        val resource = XMLLoader.resource(URL("http://localhost:8080/testhdr.xml"))
+        val resource = xmlLoader.resource(URL("http://localhost:8080/testhdr.xml"))
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
         expect("hippopotamus") { document.documentElement.textContent }
     }
 
     @Test fun `should redirect request in connection filter`() {
-        XMLLoader.addRedirectionFilter(fromHost = "example.com", toHost = "localhost", toPort = 8081)
+        val xmlLoader = XMLLoader()
+        xmlLoader.addRedirectionFilter(fromHost = "example.com", toHost = "localhost", toPort = 8081)
         embeddedServer(Netty, port = 8081) {
             routing {
                 get("/test.xml") {
@@ -200,10 +202,24 @@ class ResourceTest {
                 }
             }
         }.start()
-        val resource = XMLLoader.resource(URL("http://example.com/test.xml"))
+        val resource = xmlLoader.resource(URL("http://example.com/test.xml"))
         val document = resource.load()
         expect("test1") { document.documentElement.tagName }
         expect("Redirect") { document.documentElement.textContent }
+    }
+
+    @Test fun `should redirect http request to local file`() {
+        val xmlLoader = XMLLoader()
+        xmlLoader.addConnectionFilter(
+            ResourceLoader.PrefixRedirectionFilter(
+                fromPrefix = "http://example.com/",
+                toPrefix = File("src/test/resources/xml").absoluteFile.toURI().toString(),
+            )
+        )
+        val resource = xmlLoader.resource(URL("http://example.com/test1.xml"))
+        val document = resource.load()
+        expect("test1") { document.documentElement.tagName }
+        expect("Hello!") { document.documentElement.textContent }
     }
 
 }

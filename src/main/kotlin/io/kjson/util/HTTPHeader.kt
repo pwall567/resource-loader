@@ -54,7 +54,7 @@ class HTTPHeader(val elements: List<Element>) {
 
     companion object {
 
-        fun create(string: String): HTTPHeader {
+        fun parse(string: String): HTTPHeader {
             return HTTPHeader(string.split(',').map { Element(it.trim().split(';')) })
         }
 

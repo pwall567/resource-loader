@@ -39,6 +39,7 @@ import java.time.Instant
 
 import io.kjson.util.HTTPHeader
 import io.kjson.util.Cache
+import net.pwall.text.Wildcard
 
 /**
  * The base `ResourceLoader` class.
@@ -47,7 +48,9 @@ import io.kjson.util.Cache
  */
 abstract class ResourceLoader<T> {
 
-    private val connectionFilters = mutableListOf<(HttpURLConnection) -> HttpURLConnection?>()
+    private val connectionFilters = mutableListOf<(URLConnection) -> URLConnection?>()
+
+    val baseURL: URL = File(".").toURI().toURL()
 
     open val defaultExtension: String? = null
 
@@ -102,35 +105,33 @@ abstract class ResourceLoader<T> {
                     time = Files.getLastModifiedTime(path).toInstant(),
                 )
             }
-            val conn: URLConnection = resource.resourceURL.openConnection()
-            if (conn is HttpURLConnection) {
-                var httpConn: HttpURLConnection = conn
-                for (filter in connectionFilters)
-                    httpConn = filter(httpConn) ?:
-                        throw ResourceLoaderException("Connection vetoed - ${resource.resourceURL}")
+            var conn: URLConnection = resource.resourceURL.openConnection()
+            for (filter in connectionFilters)
+                conn = filter(conn) ?: throw ResourceLoaderException("Connection vetoed - ${resource.resourceURL}")
+            return if (conn is HttpURLConnection) {
                 // TODO think about adding support for ifModifiedSince / ETag
-                if (httpConn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
                     throw ResourceNotFoundException(resource.resourceURL)
-                if (httpConn.responseCode != HttpURLConnection.HTTP_OK)
-                    throw IOException("Error status - ${httpConn.responseCode} - ${resource.resourceURL}")
-                val contentLength = httpConn.contentLengthLong.takeIf { it >= 0 }
-                val lastModified = httpConn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
-                val contentTypeHeader = httpConn.contentType?.let { HTTPHeader.create(it) }
+                if (conn.responseCode != HttpURLConnection.HTTP_OK)
+                    throw IOException("Error status - ${conn.responseCode} - ${resource.resourceURL}")
+                val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
+                val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
+                val contentTypeHeader = conn.contentType?.let { HTTPHeader.parse(it) }
                 val charsetName: String? = contentTypeHeader?.element()?.parameter("charset")
                 val mimeType: String? = contentTypeHeader?.firstElementText()
-                return ResourceDescriptor(
-                    inputStream = httpConn.inputStream,
+                ResourceDescriptor(
+                    inputStream = conn.inputStream,
                     url = resource.resourceURL,
                     charsetName = charsetName,
                     size = contentLength,
                     time = lastModified,
                     mimeType = mimeType,
-                    eTag = httpConn.getHeaderField("etag"),
+                    eTag = conn.getHeaderField("etag"),
                 )
             }
             else {
-                return ResourceDescriptor(
-                    inputStream = conn.getInputStream(),
+                ResourceDescriptor(
+                    inputStream = conn.inputStream,
                     url = resource.resourceURL,
                 )
             }
@@ -154,7 +155,7 @@ abstract class ResourceLoader<T> {
     /**
      * Add a connection filter for HTTP connections.
      */
-    fun addConnectionFilter(filter: (HttpURLConnection) -> HttpURLConnection?) {
+    fun addConnectionFilter(filter: (URLConnection) -> URLConnection?) {
         connectionFilters.add(filter)
     }
 
@@ -162,7 +163,14 @@ abstract class ResourceLoader<T> {
      * Add an authorization filter for HTTP connections.
      */
     fun addAuthorizationFilter(host: String, headerName: String, headerValue: String?) {
-        addConnectionFilter(AuthorizationFilter(host, headerName, headerValue))
+        addConnectionFilter(AuthorizationFilter(Wildcard(host), headerName, headerValue))
+    }
+
+    /**
+     * Add an authorization filter for HTTP connections (specifying a wildcarded hostname).
+     */
+    fun addAuthorizationFilter(hostWildcard: Wildcard, headerName: String, headerValue: String?) {
+        addConnectionFilter(AuthorizationFilter(hostWildcard, headerName, headerValue))
     }
 
     /**
@@ -172,16 +180,23 @@ abstract class ResourceLoader<T> {
         addConnectionFilter(RedirectionFilter(fromHost, fromPort, toHost, toPort))
     }
 
+    /**
+     * Add a redirection filter for prefix-based redirections.
+     */
+    fun addRedirectionFilter(fromPrefix: String, toPrefix: String) {
+        addConnectionFilter(PrefixRedirectionFilter(fromPrefix, toPrefix))
+    }
+
     class AuthorizationFilter(
-        private val host: String,
+        private val hostWildcard: Wildcard,
         private val headerName: String,
         private val headerValue: String?,
-    ) : (HttpURLConnection) -> HttpURLConnection? {
+    ) : (URLConnection) -> URLConnection? {
 
-        override fun invoke(httpConn: HttpURLConnection): HttpURLConnection {
-            if (httpConn.url.matchesHost(host))
-                httpConn.addRequestProperty(headerName, headerValue)
-            return httpConn
+        override fun invoke(connection: URLConnection): URLConnection {
+            if (connection is HttpURLConnection && hostWildcard matches connection.url.host)
+                connection.addRequestProperty(headerName, headerValue)
+            return connection
         }
 
     }
@@ -191,14 +206,28 @@ abstract class ResourceLoader<T> {
         private val fromPort: Int = -1,
         private val toHost: String,
         private val toPort: Int = -1,
-    ) : (HttpURLConnection) -> HttpURLConnection? {
+    ) : (URLConnection) -> URLConnection? {
 
-        override fun invoke(httpCon: HttpURLConnection): HttpURLConnection {
-            val url = httpCon.url
-            return if (!url.matchesHost(fromHost) || url.port != fromPort)
-                httpCon
+        override fun invoke(connection: URLConnection): URLConnection {
+            val url = connection.url
+            return if (connection !is HttpURLConnection || !url.matchesHost(fromHost) || url.port != fromPort)
+                connection
             else
                 URL(url.protocol, toHost, toPort, url.file).openConnection() as HttpURLConnection
+        }
+
+    }
+
+    class PrefixRedirectionFilter(
+        private val fromPrefix: String,
+        private val toPrefix: String,
+    ) : (URLConnection) -> URLConnection? {
+
+        override fun invoke(connection: URLConnection): URLConnection = connection.url.toString().let {
+            if (it.startsWith(fromPrefix))
+                URL(toPrefix + it.substring(fromPrefix.length)).openConnection()
+            else
+                connection
         }
 
     }
@@ -207,7 +236,7 @@ abstract class ResourceLoader<T> {
 
         private val defaultFileSystem = FileSystems.getDefault()
         private val fileSystemCache = Cache<String, FileSystem> {
-            FileSystems.newFileSystem(Paths.get(it), null as ClassLoader?)
+            FileSystems.newFileSystem(Paths.get(adjustWindowsPath(it)), null as ClassLoader?)
         }
 
         fun derivePath(url: URL): Path? {
@@ -227,10 +256,13 @@ abstract class ResourceLoader<T> {
                     val fs = fileSystemCache[schemeSpecific.substring(start, bang)]
                     fs.getPath(schemeSpecific.substring(bang + 1))
                 }
-                "file" -> defaultFileSystem.getPath(uri.path)
+                "file" -> defaultFileSystem.getPath(adjustWindowsPath(uri.path))
                 else -> null
             }
         }
+
+        private fun adjustWindowsPath(path: String): String =
+                if (File.separatorChar == '\\' && path[0] == '/' && path[2] == ':') path.substring(1) else path
 
         fun URL.matchesHost(target: String): Boolean = if (target.startsWith("*."))
             host.endsWith(target.substring(1)) || host == target.substring(2)
