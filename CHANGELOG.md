@@ -2,6 +2,11 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [5.3] - 2024-11-20
+### Changed
+- `ResourceLoader`: add `baseURL`, along with function `load(String)` which uses it, and function `load(URL)`
+- `Cache`: changed to allow nullable values
+
 ## [5.2] - 2024-11-08
 ### Changed
 - `ResourceLoader`: re-worked `ConnectionFilter` mechanism, added `PrefixRedirectionFilter`

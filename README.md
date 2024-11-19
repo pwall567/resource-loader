@@ -27,10 +27,13 @@ All of the previous functionality should be available, but the means of accessin
 
 ## Quick Start
 
-For anyone wishing to use this library, a good example is the `XMLLoader` object in the tests in the project source.
+For anyone wishing to implement a resource loader using this library, a good example is the `XMLLoader` class in the
+tests in the project source.
 
 ```kotlin
-object XMLLoader : ResourceLoader<Document>() {
+class XMLLoader(
+    baseURL: URL = defaultBaseURL(),
+) : ResourceLoader<Document>(baseURL) {
 
     override val defaultExtension: String = "xml"
 
@@ -59,6 +62,9 @@ object XMLLoader : ResourceLoader<Document>() {
 - `load`: a function to load a resource using the information provided in a `ResourceDescriptor` (which includes an
   `InputStream`, the URL and other details about the resource if available)
 
+`XMLLoader` also takes an optional constructor parameter `baseURL`; this may be used to specify the base against which
+relative URL strings are resolved (the default is the current working directory).
+
 ## More Detail
 
 The `ResourceLoader` is capable of handling resources from three source types, each with its own type of URL, and each
@@ -71,15 +77,22 @@ The `resource` function of `ResourceLoader` will accept a <span title="java.net.
 <span title="java.io.File">`File`</span> or a <span title="java.nio.file.Path">`Path`</span>, and return a `Resource`.
 The `Resource` may then be used to load the resource, or as a basis for resolving a relative address.
 
-(At this point it's worth noting that the `Class.getResource()` function from the standard JVM library returns a `URL`
+(At this point it's worth noting that the `Class.getResource()` function from the standard JVM library returns a `URL?`
 so the `XMLLoader` can be used to access resources on the classpath just as easily as those in the local file system, or
-on an HTTP(S) server.)
+on an HTTP(S) server; the `Resource.classPathURL(name)` function is a convenience wrapper around the JVM function.)
 
-If the resource is a file (as opposed to a directory) the `load()` function will retrieve the content &ndash; in the
-case of a `Resource` obtained from the `XMLLoader`, parsing it as XML.
+If the resource is a file (as opposed to a directory) the `resource.load()` function will retrieve the content &ndash;
+in the case of a `Resource` obtained from the `XMLLoader`, parsing it as XML.
 
-The `resolve(String)` function will resolve the string relative to the base `Resource`, and return a new `Resource`;
+The `resource.resolve(String)` function will resolve the string relative to the `Resource`, and return a new `Resource`;
 this can then be used to load the actual resource, and also may be used to locate other resources relative to itself.
+
+If the ability to follow relative links from one resource to another is not needed, a simpler form of access is to use:
+```kotlin
+    val resource = resourceLoader.load(relativeURL)
+```
+The relative URL is resolved against the `baseURL` for the `ResourceLoader`, and the resulting URL is used to read the
+resource.
 
 More documentation to follow...
 
@@ -152,25 +165,25 @@ in the local filesystem described by `localDirectory` (a `java.io.File`).
 
 ## Dependency Specification
 
-The latest version of the library is 5.2, and it may be obtained from the Maven Central repository.
+The latest version of the library is 5.3, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>5.2</version>
+      <version>5.3</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:5.2'
+    implementation 'io.kjson:resource-loader:5.3'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:5.2")
+    implementation("io.kjson:resource-loader:5.3")
 ```
 
 Peter Wall
 
-2024-08-13
+2024-08-20

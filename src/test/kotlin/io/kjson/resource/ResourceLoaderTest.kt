@@ -1,8 +1,8 @@
 /*
- * @(#) Cache.kt
+ * @(#) ResourceLoaderTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2022 Peter Wall
+ * Copyright (c) 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +23,36 @@
  * SOFTWARE.
  */
 
-package io.kjson.util
+package io.kjson.resource
 
-/**
- * A general-purpose cache that stores a value the first time it is created.
- *
- * This class is not thread-safe or coroutine-safe.
- *
- * @author  Peter Wall
- */
-class Cache<K : Any, out V : Any?>(
-    /** The initialisation function */
-    private val init: (K) -> V
-) {
+import kotlin.test.Test
+import kotlin.test.assertTrue
+import kotlin.test.expect
+import kotlin.test.fail
 
-    private val cache = mutableMapOf<K, V>()
+import java.io.File
 
-    @Suppress("unchecked_cast")
-    operator fun get(key: K): V = if (cache.containsKey(key)) cache[key] as V else init(key).also { cache[key] = it }
+class ResourceLoaderTest {
 
-    fun remove(key: K): V? = cache.remove(key)
+    @Test fun `should create ResourceLoader with default base URL`() {
+        val xmlLoader = XMLLoader()
+        with(xmlLoader.baseURL.toString()) {
+            assertTrue(startsWith("file:"))
+        }
+        with(xmlLoader.load("src/test/resources/xml/test1.xml")) {
+            expect("test1") { documentElement.tagName }
+        }
+    }
 
-    fun clear() {
-        cache.clear()
+    @Test fun `should create ResourceLoader with specified base URL`() {
+        val xmlLoader = XMLLoader(Resource.classPathURL("/xml/") ?: fail("Can't locate directory"))
+        with(xmlLoader.load("test1.xml")) {
+            expect("test1") { documentElement.tagName }
+        }
+        val url = File("src/test/resources/xml/test2.xml").toURI().toURL()
+        with(xmlLoader.load(url)) {
+            expect("test2") { documentElement.tagName }
+        }
     }
 
 }

@@ -46,11 +46,11 @@ import net.pwall.text.Wildcard
  *
  * @author  Peter Wall
  */
-abstract class ResourceLoader<T> {
+abstract class ResourceLoader<T>(
+    val baseURL: URL = defaultBaseURL(),
+) {
 
     private val connectionFilters = mutableListOf<(URLConnection) -> URLConnection?>()
-
-    val baseURL: URL = File(".").toURI().toURL()
 
     open val defaultExtension: String? = null
 
@@ -87,6 +87,11 @@ abstract class ResourceLoader<T> {
      * Load the resource identified by the specified [URL].
      */
     fun load(resourceURL: URL): T = load(resource(resourceURL))
+
+    /**
+     * Load the resource identified by an identifier string, which is resolved against the base URL.
+     */
+    fun load(resourceId: String): T = load(baseURL.resolve(resourceId))
 
     /**
      * Open a [Resource] for reading.  This function is open for extension to allow non-standard URLs to be mapped to
@@ -240,8 +245,6 @@ abstract class ResourceLoader<T> {
         }
 
         fun derivePath(url: URL): Path? {
-            // TODO move this into the main class body, and allow relative URL to be resolved against a "base" URL,
-            //      established when the ResourceLoader is constructed (default being file:///.)
             val uri = url.toURI()
             return when (uri.scheme) {
                 "jar" -> {
@@ -268,6 +271,10 @@ abstract class ResourceLoader<T> {
             host.endsWith(target.substring(1)) || host == target.substring(2)
         else
             host == target
+
+        fun URL.resolve(relativeURL: String) = URL(this, relativeURL)
+
+        fun defaultBaseURL(): URL = File(".").canonicalFile.toURI().toURL()
 
     }
 

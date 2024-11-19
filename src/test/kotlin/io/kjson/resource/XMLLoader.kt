@@ -25,12 +25,17 @@
 
 package io.kjson.resource
 
-import org.w3c.dom.Document
-import org.xml.sax.InputSource
+import java.net.URL
+
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
-class XMLLoader : ResourceLoader<Document>() {
+import org.w3c.dom.Document
+import org.xml.sax.InputSource
+
+class XMLLoader(
+    baseURL: URL = defaultBaseURL(),
+) : ResourceLoader<Document>(baseURL) {
 
     override val defaultExtension: String = "xml"
 

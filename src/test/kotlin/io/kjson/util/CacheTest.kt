@@ -2,7 +2,7 @@
  * @(#) CacheTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2022 Peter Wall
+ * Copyright (c) 2022, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package io.kjson.util
 
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.expect
 
 class CacheTest {
@@ -40,6 +41,17 @@ class CacheTest {
         }
         expect(12345) { cache["12345"] }
         expect(12345) { cache["12345"] }
+    }
+
+    @Test fun `should store null in cache`() {
+        var used = false
+        val cache = Cache<String, Int?> {
+            check(!used) { "Called again" }
+            used = true
+            null
+        }
+        assertNull(cache["12345"])
+        assertNull(cache["12345"])
     }
 
     @Test fun `should remove item from cache`() {
