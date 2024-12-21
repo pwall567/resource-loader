@@ -2,7 +2,7 @@
  * @(#) HTTPHeaderTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2022 Peter Wall
+ * Copyright (c) 2022, 2024 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,46 +26,47 @@
 package io.kjson.util
 
 import kotlin.test.Test
-import kotlin.test.expect
+
+import io.kstuff.test.shouldBe
 
 class HTTPHeaderTest {
 
     @Test fun `should create simple HTTPHeader`() {
         val contentTypeHeader = HTTPHeader.parse("application/json")
-        expect("application/json") { contentTypeHeader.firstElementText() }
+        contentTypeHeader.firstElementText() shouldBe "application/json"
     }
 
     @Test fun `should create HTTPHeader with parameter`() {
         val contentTypeHeader = HTTPHeader.parse("application/json;charset=UTF-8")
-        expect("application/json") { contentTypeHeader.firstElementText() }
-        expect("UTF-8") { contentTypeHeader.element().parameter("charset") }
+        contentTypeHeader.firstElementText() shouldBe "application/json"
+        contentTypeHeader.element().parameter("charset") shouldBe "UTF-8"
     }
 
     @Test fun `should create HTTPHeader with multiple elements`() {
         val acceptHeader = HTTPHeader.parse("text/html; q=1.0, text/*; q=0.8, image/gif; q=0.6, image/jpeg; q=0.6," +
                 " image/*; q=0.5, */*; q=0.1")
-        expect(6) { acceptHeader.elements.size }
-        expect("text/html") { acceptHeader.elements[0].values[0] }
-        expect("1.0") { acceptHeader.elements[0].parameter("q") }
+        acceptHeader.elements.size shouldBe 6
+        acceptHeader.elements[0].values[0] shouldBe "text/html"
+        acceptHeader.elements[0].parameter("q") shouldBe "1.0"
         with(acceptHeader.elements[1]) {
-            expect("text/*") { elementText() }
-            expect("0.8") { parameter("q") }
+            elementText() shouldBe "text/*"
+            parameter("q") shouldBe "0.8"
         }
         with(acceptHeader.elements[2]) {
-            expect("image/gif") { elementText() }
-            expect("0.6") { parameter("q") }
+            elementText() shouldBe "image/gif"
+            parameter("q") shouldBe "0.6"
         }
         with(acceptHeader.elements[3]) {
-            expect("image/jpeg") { elementText() }
-            expect("0.6") { parameter("q") }
+            elementText() shouldBe "image/jpeg"
+            parameter("q") shouldBe "0.6"
         }
         with(acceptHeader.elements[4]) {
-            expect("image/*") { elementText() }
-            expect("0.5") { parameter("q") }
+            elementText() shouldBe "image/*"
+            parameter("q") shouldBe "0.5"
         }
         with(acceptHeader.elements[5]) {
-            expect("*/*") { elementText() }
-            expect("0.1") { parameter("q") }
+            elementText() shouldBe "*/*"
+            parameter("q") shouldBe "0.1"
         }
     }
 

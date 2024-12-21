@@ -26,15 +26,15 @@
 package io.kjson.resource
 
 import kotlin.test.Test
-import kotlin.test.expect
 
 import java.io.ByteArrayInputStream
 import java.net.URL
 
+import io.kstuff.test.shouldBe
+
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.call
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -50,8 +50,7 @@ class ResourceDescriptorTest {
             inputStream = ByteArrayInputStream(byteArray),
             url = dummyURL,
         )
-        val text = rd.getReader().readText()
-        expect("\u20AC200.00") { text }
+        rd.getReader().readText() shouldBe "\u20AC200.00"
     }
 
     @Test fun `should use DynamicReader in ktor environment`() = testApplication {
@@ -72,8 +71,8 @@ class ResourceDescriptorTest {
             }
         }
         val response = client.get("/test")
-        expect(HttpStatusCode.OK) { response.status }
-        expect("\u20AC200.00") { response.bodyAsText() }
+        response.status shouldBe HttpStatusCode.OK
+        response.bodyAsText() shouldBe "\u20AC200.00"
     }
 
 }

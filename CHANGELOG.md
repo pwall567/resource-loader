@@ -2,6 +2,12 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [Unreleased]
+### Changed
+- `ResourceLoader`: minor changes to filters
+- `pom.xml`, tests: converted to `should-test` library
+- `pom.xml`: updated Ktor dependency (used in tests)
+
 ## [5.3] - 2024-11-20
 ### Changed
 - `ResourceLoader`: add `baseURL`, along with function `load(String)` which uses it, and function `load(URL)`

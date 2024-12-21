@@ -188,14 +188,14 @@ abstract class ResourceLoader<T>(
     /**
      * Add a redirection filter for prefix-based redirections.
      */
-    fun addRedirectionFilter(fromPrefix: String, toPrefix: String) {
+    fun addPrefixRedirectionFilter(fromPrefix: String, toPrefix: String) {
         addConnectionFilter(PrefixRedirectionFilter(fromPrefix, toPrefix))
     }
 
     class AuthorizationFilter(
-        private val hostWildcard: Wildcard,
-        private val headerName: String,
-        private val headerValue: String?,
+        val hostWildcard: Wildcard,
+        val headerName: String,
+        val headerValue: String?,
     ) : (URLConnection) -> URLConnection? {
 
         override fun invoke(connection: URLConnection): URLConnection {
@@ -207,10 +207,10 @@ abstract class ResourceLoader<T>(
     }
 
     class RedirectionFilter(
-        private val fromHost: String,
-        private val fromPort: Int = -1,
-        private val toHost: String,
-        private val toPort: Int = -1,
+        val fromHost: String,
+        val fromPort: Int = -1,
+        val toHost: String,
+        val toPort: Int = -1,
     ) : (URLConnection) -> URLConnection? {
 
         override fun invoke(connection: URLConnection): URLConnection {
@@ -224,8 +224,8 @@ abstract class ResourceLoader<T>(
     }
 
     class PrefixRedirectionFilter(
-        private val fromPrefix: String,
-        private val toPrefix: String,
+        val fromPrefix: String,
+        val toPrefix: String,
     ) : (URLConnection) -> URLConnection? {
 
         override fun invoke(connection: URLConnection): URLConnection = connection.url.toString().let {

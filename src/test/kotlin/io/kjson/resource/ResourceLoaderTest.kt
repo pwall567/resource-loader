@@ -26,33 +26,54 @@
 package io.kjson.resource
 
 import kotlin.test.Test
-import kotlin.test.assertTrue
-import kotlin.test.expect
 import kotlin.test.fail
 
 import java.io.File
+
+import io.kstuff.test.shouldBe
+import io.kstuff.test.shouldStartWith
+import net.pwall.text.Wildcard
 
 class ResourceLoaderTest {
 
     @Test fun `should create ResourceLoader with default base URL`() {
         val xmlLoader = XMLLoader()
-        with(xmlLoader.baseURL.toString()) {
-            assertTrue(startsWith("file:"))
-        }
+        xmlLoader.baseURL.toString() shouldStartWith "file:"
         with(xmlLoader.load("src/test/resources/xml/test1.xml")) {
-            expect("test1") { documentElement.tagName }
+            documentElement.tagName shouldBe "test1"
         }
     }
 
     @Test fun `should create ResourceLoader with specified base URL`() {
         val xmlLoader = XMLLoader(Resource.classPathURL("/xml/") ?: fail("Can't locate directory"))
         with(xmlLoader.load("test1.xml")) {
-            expect("test1") { documentElement.tagName }
+            documentElement.tagName shouldBe "test1"
         }
         val url = File("src/test/resources/xml/test2.xml").toURI().toURL()
         with(xmlLoader.load(url)) {
-            expect("test2") { documentElement.tagName }
+            documentElement.tagName shouldBe "test2"
         }
+    }
+
+    @Test fun `should create AuthorizationFilter`() {
+        val filter = ResourceLoader.AuthorizationFilter(Wildcard("test*"), "Test", "me")
+        filter.hostWildcard.matches("test1") shouldBe true
+        filter.headerName shouldBe "Test"
+        filter.headerValue shouldBe "me"
+    }
+
+    @Test fun `should create RedirectionFilter`() {
+        val filter = ResourceLoader.RedirectionFilter("example.com", 80, "localhost", 8080)
+        filter.fromHost shouldBe "example.com"
+        filter.fromPort shouldBe 80
+        filter.toHost shouldBe "localhost"
+        filter.toPort shouldBe 8080
+    }
+
+    @Test fun `should create PrefixRedirectionFilter`() {
+        val filter = ResourceLoader.PrefixRedirectionFilter("example.com","localhost")
+        filter.fromPrefix shouldBe "example.com"
+        filter.toPrefix shouldBe "localhost"
     }
 
 }

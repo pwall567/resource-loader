@@ -91,8 +91,8 @@ If the ability to follow relative links from one resource to another is not need
 ```kotlin
     val resource = resourceLoader.load(relativeURL)
 ```
-The relative URL is resolved against the `baseURL` for the `ResourceLoader`, and the resulting URL is used to read the
-resource.
+The relative URL string is resolved against the `baseURL` for the `ResourceLoader`, and the resulting URL is used to
+read the resource.
 
 More documentation to follow...
 
@@ -155,7 +155,7 @@ This may be used, for example, to redirect external HTTP(S) calls to the local f
 
 Again, a convenience function will add the filter:
 ```kotlin
-    resourceLoader.addRedirectionFilter(
+    resourceLoader.addPrefixRedirectionFilter(
         fromPrefix = "https://example.com/api/schema/",
         toPrefix = localDirectory.absoluteFile.toURI().toString(),
     )
@@ -186,4 +186,4 @@ The latest version of the library is 5.3, and it may be obtained from the Maven 
 
 Peter Wall
 
-2024-08-20
+2024-12-21

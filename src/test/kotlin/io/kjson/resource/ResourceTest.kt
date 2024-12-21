@@ -26,10 +26,7 @@
 package io.kjson.resource
 
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
-import kotlin.test.expect
+import kotlin.test.fail
 
 import java.io.File
 import java.net.MalformedURLException
@@ -37,7 +34,13 @@ import java.net.URI
 import java.net.URL
 import java.nio.file.FileSystems
 
-import io.ktor.server.application.call
+import io.kstuff.test.shouldBe
+import io.kstuff.test.shouldBeNonNull
+import io.kstuff.test.shouldBeOneOf
+import io.kstuff.test.shouldEndWith
+import io.kstuff.test.shouldStartWith
+import io.kstuff.test.shouldThrow
+
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.response.respondText
@@ -49,76 +52,73 @@ class ResourceTest {
     @Test fun `should create resource using File`() {
         val resource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
+        document.documentElement.tagName shouldBe "test1"
     }
 
     @Test fun `should create ResourceLoader using Path`() {
         val resource = XMLLoader().resource(FileSystems.getDefault().getPath("src/test/resources/xml/test1.xml"))
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
+        document.documentElement.tagName shouldBe "test1"
     }
 
     @Test fun `should create ResourceLoader using classpath`() {
-        val url = ResourceTest::class.java.getResource("/xml/test1.xml")
-        assertNotNull(url)
+        val url = ResourceTest::class.java.getResource("/xml/test1.xml") ?: fail("Can't locate resource")
         val resource = XMLLoader().resource(url)
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
+        document.documentElement.tagName shouldBe "test1"
     }
 
     @Test fun `should resolve sibling`() {
         val resource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         with(resource.load()) {
-            expect("test1") { documentElement.tagName }
+            documentElement.tagName shouldBe "test1"
         }
         with(resource.resolve("test2.xml").load()) {
-            expect("test2") { documentElement.tagName }
+            documentElement.tagName shouldBe "test2"
         }
     }
 
     @Test fun `should resolve child`() {
         val resource = XMLLoader().resource(File("src/test/resources/xml/"))
         with(resource.resolve("test1.xml").load()) {
-            expect("test1") { documentElement.tagName }
+            documentElement.tagName shouldBe "test1"
         }
         with(resource.resolve("test2.xml").load()) {
-            expect("test2") { documentElement.tagName }
+            documentElement.tagName shouldBe "test2"
         }
     }
 
     @Test fun `should read from remote URL`() {
         val resource = XMLLoader().resource(URL("http://kjson.io/xml/"))
         val resolved = resource.resolve("test1.xml")
-        expect("http://kjson.io/xml/test1.xml") { resolved.resourceURL.toString() }
-        expect("test") { resolved.load().documentElement.tagName }
+        resolved.resourceURL.toString() shouldBe "http://kjson.io/xml/test1.xml"
+        resolved.load().documentElement.tagName shouldBe "test"
     }
 
     @Test fun `should switch from local file to remote URL`() {
         val resource = XMLLoader().resource(File("src/test/resources/xml/"))
-        expect("test1") { resource.resolve("test1.xml").load().documentElement.tagName }
-        expect("test") { resource.resolve("http://kjson.io/xml/test1.xml").load().documentElement.tagName }
+        resource.resolve("test1.xml").load().documentElement.tagName shouldBe "test1"
+        resource.resolve("http://kjson.io/xml/test1.xml").load().documentElement.tagName shouldBe "test"
     }
 
     @Test fun `should throw not-found exception when resource not found`() {
-        assertFailsWith<ResourceNotFoundException> {
+        shouldThrow<ResourceNotFoundException> {
             XMLLoader().resource(File("src/test/resources/xml/test9.xml")).load()
         }.let {
-            with(it.message) {
-                assertNotNull(this)
-                assertTrue(startsWith("Resource not found - "))
-                assertTrue(endsWith("src/test/resources/xml/test9.xml"))
+            with(it.message.shouldBeNonNull()) {
+                this shouldStartWith "Resource not found - "
+                this shouldEndWith "src/test/resources/xml/test9.xml"
             }
         }
     }
 
     @Test fun `should throw not-found exception when remote URL not found`() {
-        assertFailsWith<ResourceNotFoundException> {
+        shouldThrow<ResourceNotFoundException> {
             XMLLoader().resource(URL("http://kjson.io/xml/test9.xml")).load()
         }.let {
-            with(it.message) {
-                assertNotNull(this)
-                assertTrue(startsWith("Resource not found - "))
-                assertTrue(endsWith("xml/test9.xml"))
+            with(it.message.shouldBeNonNull()) {
+                this shouldStartWith "Resource not found - "
+                this shouldEndWith "xml/test9.xml"
             }
         }
     }
@@ -128,51 +128,46 @@ class ResourceTest {
         val jarURL = URL("jar:${jarFile.absoluteFile.toURI()}!/xml/")
         val resource = XMLLoader().resource(jarURL)
         val resolved = resource.resolve("test1.xml")
-        expect(URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test1.xml")) { resolved.resourceURL }
+        resolved.resourceURL shouldBe URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test1.xml")
         val result = resolved.load()
         val root = result.documentElement
-        expect("test") { root.tagName }
+        root.tagName shouldBe "test"
         val sibling = resolved.resolve("test2.xml")
-        expect(URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test2.xml")) { sibling.resourceURL }
-        expect("test2") { sibling.load().documentElement.tagName }
+        sibling.resourceURL shouldBe URL("jar:${jarFile.absoluteFile.toURI()}!/xml/test2.xml")
+        sibling.load().documentElement.tagName shouldBe "test2"
     }
 
     @Test fun `should display readable form of URL on toString`() {
         val resource1 = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
-        expect("src/test/resources/xml/test1.xml") { resource1.toString() }
+        resource1.toString() shouldBe "src/test/resources/xml/test1.xml"
         val resource2 = XMLLoader().resource(URL("http://kjson.io/xml/test9.xml"))
-        expect("http://kjson.io/xml/test9.xml") { resource2.toString() }
+        resource2.toString() shouldBe "http://kjson.io/xml/test9.xml"
     }
 
     @Test fun `should get a classpath URL`() {
-        val url = Resource.classPathURL("/xml/test1.xml")
-        assertNotNull(url)
-        assertTrue(url.protocol == "file" || url.protocol == "jar")
-        assertTrue(url.toString().endsWith("/xml/test1.xml"))
+        val url = Resource.classPathURL("/xml/test1.xml") ?: fail("Can't locate resource")
+        url.protocol shouldBeOneOf listOf("file", "jar")
+        url.toString() shouldEndWith "/xml/test1.xml"
         val resource = XMLLoader().resource(url)
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
+        document.documentElement.tagName shouldBe "test1"
     }
 
     @Test fun `check assumptions about URI and URL`() {
         val uri1 = URI("http://example.com/path/abc.xyz")
         val uri2 = uri1.resolve("def.xyz")
-        expect(URI("http://example.com/path/def.xyz")) { uri2 }
+        uri2 shouldBe URI("http://example.com/path/def.xyz")
 
         val url1 = URL("http://example.com/path/abc.xyz")
         val url2 = URL(url1, "def.xyz")
-        expect(URL("http://example.com/path/def.xyz")) { url2 }
+        url2 shouldBe URL("http://example.com/path/def.xyz")
 
         val uri3 = URI("nonstd://example.com/path/abc.xyz")
         val uri4 = uri3.resolve("def.xyz")
-        expect(URI("nonstd://example.com/path/def.xyz")) { uri4 }
+        uri4 shouldBe URI("nonstd://example.com/path/def.xyz")
 
-        assertFailsWith<MalformedURLException> { URL("nonstd://example.com/path/abc.xyz") }.let {
-            expect("unknown protocol: nonstd") { it.message }
-        }
-        assertFailsWith<MalformedURLException> { uri3.toURL() }.let {
-            expect("unknown protocol: nonstd") { it.message }
-        }
+        shouldThrow<MalformedURLException>("unknown protocol: nonstd") { URL("nonstd://example.com/path/abc.xyz") }
+        shouldThrow<MalformedURLException>("unknown protocol: nonstd") { uri3.toURL() }
     }
 
     @Test fun `should add request headers in connection filter`() {
@@ -188,8 +183,8 @@ class ResourceTest {
         }.start()
         val resource = xmlLoader.resource(URL("http://localhost:8080/testhdr.xml"))
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
-        expect("hippopotamus") { document.documentElement.textContent }
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "hippopotamus"
     }
 
     @Test fun `should redirect request in connection filter`() {
@@ -204,8 +199,8 @@ class ResourceTest {
         }.start()
         val resource = xmlLoader.resource(URL("http://example.com/test.xml"))
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
-        expect("Redirect") { document.documentElement.textContent }
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "Redirect"
     }
 
     @Test fun `should redirect http request to local file`() {
@@ -218,8 +213,8 @@ class ResourceTest {
         )
         val resource = xmlLoader.resource(URL("http://example.com/test1.xml"))
         val document = resource.load()
-        expect("test1") { document.documentElement.tagName }
-        expect("Hello!") { document.documentElement.textContent }
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "Hello!"
     }
 
 }
