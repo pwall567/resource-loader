@@ -2,7 +2,7 @@
  * @(#) Resource.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021, 2022, 2023, 2024 Peter Wall
+ * Copyright (c) 2021, 2022, 2023, 2024, 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,77 +25,113 @@
 
 package io.kjson.resource
 
-import java.io.File
-import java.net.URI
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Path
 
 /**
  * A resource, as described by a [URL] and loaded by a [ResourceLoader].
  *
  * @author  Peter Wall
  */
-class Resource<T> internal constructor(
-    internal val resourcePath: Path?,
-    val resourceURL: URL,
-    private val resourceLoader: ResourceLoader<T>,
+sealed class Resource<T>(
+    val pathElements: Array<String>,
+    val isDirectory: Boolean,
+    val resourceLoader: ResourceLoader<T>,
 ) {
+
+    abstract val resourceURL: URL
 
     /**
      * Load the resource.  This function is delegated to the [ResourceLoader], which will load a resource of the target
      * type.
      */
-    fun load(): T = resourceLoader.load(this)
+    open fun load(): T = resourceLoader.load(this)
 
     /**
      * Resolve a relative URL against the current `Resource`, returning a new `Resource`.
      */
     fun resolve(relativeURL: String): Resource<T> {
-        val extendedURL = resourceLoader.addExtension(relativeURL)
-        if (URI(extendedURL).scheme == null && resourcePath != null) {
-            // we're navigating entirely within the file system
-            val resolved: Path = when {
-                Files.isDirectory(resourcePath) -> resourcePath.resolve(extendedURL)
-                else -> resourcePath.resolveSibling(extendedURL)
-            }
-            return resourceLoader.resource(resolved)
+        if (relativeURL.contains(':'))
+            return resourceLoader.resource(URL(relativeURL))
+        if (relativeURL.isEmpty()) {
+            return if (isDirectory)
+                this
+            else
+                createResource(pathElements.dropLast(1).toTypedArray(), true)
         }
-        val resolvedURL = resourceURL.toURI().resolve(extendedURL).toURL()
-        return resourceLoader.resource(resolvedURL)
+        val relativeURLElements = relativeURL.split('/').toMutableList()
+        val newPath: MutableList<String>
+        if (relativeURLElements[0].isEmpty()) { // starts with slash - absolute path
+            if (relativeURLElements.size == 1)
+                return createResource(emptyArray(), true)
+            newPath = mutableListOf()
+            relativeURLElements.removeAt(0)
+        }
+        else {
+            newPath = pathElements.toMutableList()
+            if (!isDirectory)
+                newPath.removeLast()
+        }
+        var isDir = true
+        for (i in relativeURLElements.indices) {
+            when (relativeURLElements[i]) {
+                "." -> isDir = true
+                ".." -> {
+                    if (newPath.isEmpty())
+                        throw IllegalArgumentException("Illegal use of \"..\" in URL")
+                    newPath.removeLast()
+                    isDir = true
+                }
+                "" -> {
+                    if (i == relativeURLElements.lastIndex) {
+                        isDir = true
+                        break
+                    }
+                    throw IllegalArgumentException("Illegal use of \"//\" in URL")
+                }
+                else -> {
+                    newPath.add(relativeURLElements[i])
+                    isDir = false
+                }
+            }
+        }
+        return createResource(newPath.toTypedArray(), isDir)
     }
 
-    override fun equals(other: Any?): Boolean = this === other || other is Resource<*> &&
-            resourceLoader === other.resourceLoader && resourceURL.toString() == other.resourceURL.toString()
-
-    override fun hashCode(): Int = resourceLoader.hashCode() xor resourceURL.toString().hashCode()
+    protected abstract fun createResource(
+        pathElements: Array<String>,
+        isDirectory: Boolean,
+    ): Resource<T>
 
     /**
-     * Create a string form of the URL for this `Resource` suitable for use in debugging and logging messages.
+     * Open a [Resource] for reading.  The result of this function is a [ResourceDescriptor], which contains an open
+     * `InputStream` and all the metadata known about the resource.
      */
-    override fun toString(): String = if (resourceURL.protocol != "file") resourceURL.toString() else {
-        val path = resourceURL.path
-        if (path.startsWith(currentPath))
-            path.drop(currentPath.length)
-        else
-            path
-    }
+    abstract fun open(): ResourceDescriptor
 
     companion object {
-
-        val currentPath: String = File(".").absoluteFile.toURI().path.let {
-            when {
-                it.endsWith("/./") -> it.dropLast(2)
-                it.endsWith("/.") -> it.dropLast(1)
-                it.endsWith('/') -> it
-                else -> "$it/"
-            }
-        }
 
         /**
          * Get a URL for a resource in the classpath (will be either a `file:` or a `jar:` URL).
          */
         fun classPathURL(name: String): URL? = Resource::class.java.getResource(name)
+
+        fun MutableList<String>.dropDotElements(): MutableList<String> {
+            var i = 0
+            while (i < size) {
+                when (this[i]) {
+                    "." -> removeAt(i)
+                    ".." -> {
+                        if (i == 0)
+                            throw IllegalArgumentException("Illegal use of \"..\" in URL")
+                        removeAt(i)
+                        removeAt(--i)
+                    }
+                    "" -> throw IllegalArgumentException("Illegal empty path element in URL")
+                    else -> i++
+                }
+            }
+            return this
+        }
 
     }
 

@@ -2,7 +2,7 @@
  * @(#) ResourceLoaderTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2024 Peter Wall
+ * Copyright (c) 2024, 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,9 +29,16 @@ import kotlin.test.Test
 import kotlin.test.fail
 
 import java.io.File
+import java.net.URL
 
 import io.kstuff.test.shouldBe
 import io.kstuff.test.shouldStartWith
+
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
 import net.pwall.text.Wildcard
 
 class ResourceLoaderTest {
@@ -74,6 +81,61 @@ class ResourceLoaderTest {
         val filter = ResourceLoader.PrefixRedirectionFilter("example.com","localhost")
         filter.fromPrefix shouldBe "example.com"
         filter.toPrefix shouldBe "localhost"
+    }
+
+    @Test fun `should create file URL from String`() {
+        ResourceLoader.createFileURL("/abc/def") shouldBe "file:/abc/def"
+    }
+
+    @Test fun `should create file URL from File`() {
+        ResourceLoader.createFileURL(File("/abc/def")) shouldBe "file:/abc/def"
+    }
+
+    @Test fun `should add request headers in connection filter`() {
+        val xmlLoader = XMLLoader()
+        xmlLoader.addAuthorizationFilter("localhost", "X-Test", "hippopotamus")
+        embeddedServer(Netty, port = 8080) {
+            routing {
+                get("/testhdr.xml") {
+                    val header = call.request.headers["X-Test"]
+                    call.respondText("<test1>$header</test1>")
+                }
+            }
+        }.start()
+        val resource = xmlLoader.resource(URL("http://localhost:8080/testhdr.xml"))
+        val document = resource.load()
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "hippopotamus"
+    }
+
+    @Test fun `should redirect request in connection filter`() {
+        val xmlLoader = XMLLoader()
+        xmlLoader.addRedirectionFilter(fromHost = "example.com", toHost = "localhost", toPort = 8081)
+        embeddedServer(Netty, port = 8081) {
+            routing {
+                get("/test.xml") {
+                    call.respondText("<test1>Redirect</test1>")
+                }
+            }
+        }.start()
+        val resource = xmlLoader.resource(URL("http://example.com/test.xml"))
+        val document = resource.load()
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "Redirect"
+    }
+
+    @Test fun `should redirect http request to local file`() {
+        val xmlLoader = XMLLoader()
+        xmlLoader.addConnectionFilter(
+            ResourceLoader.PrefixRedirectionFilter(
+                fromPrefix = "http://example.com/",
+                toPrefix = File("src/test/resources/xml").absoluteFile.toURI().toString(),
+            )
+        )
+        val resource = xmlLoader.resource(URL("http://example.com/test1.xml"))
+        val document = resource.load()
+        document.documentElement.tagName shouldBe "test1"
+        document.documentElement.textContent shouldBe "Hello!"
     }
 
 }

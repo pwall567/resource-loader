@@ -2,7 +2,7 @@
  * @(#) ResourceLoader.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2023, 2024 Peter Wall
+ * Copyright (c) 2023, 2024, 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,19 +26,14 @@
 package io.kjson.resource
 
 import java.io.File
-import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLConnection
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
-import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
-import java.time.Instant
 
-import io.kjson.util.HTTPHeader
-import io.kjson.util.Cache
+import io.kjson.resource.FileResource.Companion.createFileResource
+import io.kjson.resource.HTTPResource.Companion.createHTTPResource
+import io.kjson.resource.JARResource.Companion.createJARResource
 import net.pwall.text.Wildcard
 
 /**
@@ -50,7 +45,7 @@ abstract class ResourceLoader<T>(
     val baseURL: URL = defaultBaseURL(),
 ) {
 
-    private val connectionFilters = mutableListOf<(URLConnection) -> URLConnection?>()
+    internal val connectionFilters = mutableListOf<(URLConnection) -> URLConnection?>()
 
     open val defaultExtension: String? = null
 
@@ -65,23 +60,33 @@ abstract class ResourceLoader<T>(
     /**
      * Get a [Resource], specifying a [File].
      */
-    fun resource(resourceFile: File): Resource<T> = Resource(resourceFile.toPath(), resourceFile.toURI().toURL(), this)
+    fun resource(resourceFile: File): Resource<T> = createFileResource(resourceFile, this)
 
     /**
      * Get a [Resource], specifying a [Path].
      */
-    fun resource(resourcePath: Path): Resource<T> = Resource(resourcePath, resourcePath.toUri().toURL(), this)
+    fun resource(resourcePath: Path): Resource<T> = createFileResource(resourcePath, this)
 
     /**
      * Get a [Resource], specifying a [URL].
      */
-    fun resource(resourceURL: URL): Resource<T> = Resource(derivePath(resourceURL), resourceURL, this)
+    fun resource(resourceURL: URL): Resource<T> = when (resourceURL.protocol) {
+        "http", "https" -> createHTTPResource(resourceURL, this)
+        "file" -> createFileResource(resourceURL, this)
+        "jar" -> createJARResource(resourceURL, this)
+        else -> throw ResourceLoaderException("URL not recognised: $resourceURL")
+    }
+
+    /**
+     * Create a [SyntheticResource], specifying the name and value.
+     */
+    fun syntheticResource(name: String, value: T): SyntheticResource<T> = SyntheticResource(name, value, this)
 
     /**
      * Load the resource identified by the specified [Resource].  This function is open for extension to allow, for
      * example, caching implementations to provide a returned resource bypassing the regular mechanism.
      */
-    open fun load(resource: Resource<T>): T = load(openResource(resource))
+    open fun load(resource: Resource<T>): T = load(resource.open())
 
     /**
      * Load the resource identified by the specified [URL].
@@ -92,62 +97,6 @@ abstract class ResourceLoader<T>(
      * Load the resource identified by an identifier string, which is resolved against the base URL.
      */
     fun load(resourceId: String): T = load(baseURL.resolve(resourceId))
-
-    /**
-     * Open a [Resource] for reading.  This function is open for extension to allow non-standard URLs to be mapped to
-     * actual resources.  The result of this function is a [ResourceDescriptor], which contains an open `InputStream`
-     * and all the metadata known about the resource.
-     */
-    open fun openResource(resource: Resource<T>): ResourceDescriptor {
-        try {
-            resource.resourcePath?.let { path ->
-                if (!Files.exists(path) || Files.isDirectory(path))
-                    throw ResourceNotFoundException(resource.resourceURL)
-                return ResourceDescriptor(
-                    inputStream = Files.newInputStream(path),
-                    url = resource.resourceURL,
-                    size = Files.size(path),
-                    time = Files.getLastModifiedTime(path).toInstant(),
-                )
-            }
-            var conn: URLConnection = resource.resourceURL.openConnection()
-            for (filter in connectionFilters)
-                conn = filter(conn) ?: throw ResourceLoaderException("Connection vetoed - ${resource.resourceURL}")
-            return if (conn is HttpURLConnection) {
-                // TODO think about adding support for ifModifiedSince / ETag
-                if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                    throw ResourceNotFoundException(resource.resourceURL)
-                if (conn.responseCode != HttpURLConnection.HTTP_OK)
-                    throw IOException("Error status - ${conn.responseCode} - ${resource.resourceURL}")
-                val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
-                val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
-                val contentTypeHeader = conn.contentType?.let { HTTPHeader.parse(it) }
-                val charsetName: String? = contentTypeHeader?.element()?.parameter("charset")
-                val mimeType: String? = contentTypeHeader?.firstElementText()
-                ResourceDescriptor(
-                    inputStream = conn.inputStream,
-                    url = resource.resourceURL,
-                    charsetName = charsetName,
-                    size = contentLength,
-                    time = lastModified,
-                    mimeType = mimeType,
-                    eTag = conn.getHeaderField("etag"),
-                )
-            }
-            else {
-                ResourceDescriptor(
-                    inputStream = conn.inputStream,
-                    url = resource.resourceURL,
-                )
-            }
-        }
-        catch (rle: ResourceLoaderException) {
-            throw rle
-        }
-        catch (e: Exception) {
-            throw ResourceLoaderException("Error opening resource ${resource.resourceURL}", e)
-        }
-    }
 
     /**
      * Add the default extension to a file name or URL string.
@@ -239,35 +188,7 @@ abstract class ResourceLoader<T>(
 
     companion object {
 
-        private val defaultFileSystem = FileSystems.getDefault()
-        private val fileSystemCache = Cache<String, FileSystem> {
-            FileSystems.newFileSystem(Paths.get(adjustWindowsPath(it)), null as ClassLoader?)
-        }
-
-        fun derivePath(url: URL): Path? {
-            val uri = url.toURI()
-            return when (uri.scheme) {
-                "jar" -> {
-                    val schemeSpecific = uri.schemeSpecificPart
-                    var start = schemeSpecific.indexOf(':') // probably stepped past "file:"
-                    val bang = schemeSpecific.lastIndexOf('!')
-                    if (start !in 0 until bang)
-                        return null
-                    start++
-                    while (start + 2 < bang && schemeSpecific[start] == '/' && schemeSpecific[start + 1] == '/')
-                        start++ // implementations vary in their use of multiple slash characters
-                    val fs = fileSystemCache[schemeSpecific.substring(start, bang)]
-                    fs.getPath(schemeSpecific.substring(bang + 1))
-                }
-                "file" -> defaultFileSystem.getPath(adjustWindowsPath(uri.path))
-                else -> null
-            }
-        }
-
-        private fun adjustWindowsPath(path: String): String =
-                if (File.separatorChar == '\\' && path[0] == '/' && path[2] == ':') path.substring(1) else path
-
-        fun URL.matchesHost(target: String): Boolean = if (target.startsWith("*."))
+        internal fun URL.matchesHost(target: String): Boolean = if (target.startsWith("*."))
             host.endsWith(target.substring(1)) || host == target.substring(2)
         else
             host == target
@@ -275,6 +196,10 @@ abstract class ResourceLoader<T>(
         fun URL.resolve(relativeURL: String) = URL(this, relativeURL)
 
         fun defaultBaseURL(): URL = File(".").canonicalFile.toURI().toURL()
+
+        fun createFileURL(path: String): String = "file:$path"
+
+        fun createFileURL(file: File): String = createFileURL(file.canonicalPath)
 
     }
 

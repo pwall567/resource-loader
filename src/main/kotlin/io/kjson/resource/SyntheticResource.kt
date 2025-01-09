@@ -1,8 +1,8 @@
 /*
- * @(#) ResourceLoaderTest.kt
+ * @(#) SyntheticResource.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021, 2024, 2025 Peter Wall
+ * Copyright (c) 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,32 +25,30 @@
 
 package io.kjson.resource
 
-import kotlin.test.Test
-import kotlin.test.fail
-
-import java.io.File
+import java.io.ByteArrayInputStream
 import java.net.URL
 
-import io.kstuff.test.shouldBe
-import io.kstuff.test.shouldBeOneOf
-import io.kstuff.test.shouldEndWith
+class SyntheticResource<T>(
+    private val name: String,
+    private val value: T,
+    resourceLoader: ResourceLoader<T>,
+) : Resource<T>(arrayOf(name), false, resourceLoader) {
 
-class ResourceTest {
+    override val resourceURL: URL
+        get() = URL("http://localhost/$name")
 
-    @Test fun `should display readable form of URL on toString`() {
-        val resource1 = XMLLoader().resource(File("src/test/resources/xml/test.xml"))
-        resource1.toString() shouldBe "src/test/resources/xml/test.xml"
-        val resource2 = XMLLoader().resource(URL("http://kjson.io/xml/test9.xml"))
-        resource2.toString() shouldBe "http://kjson.io/xml/test9.xml"
+    override fun open(): ResourceDescriptor {
+        return ResourceDescriptor(
+            inputStream = ByteArrayInputStream(ByteArray(0)),
+            url = resourceURL,
+        )
     }
 
-    @Test fun `should get a classpath URL`() {
-        val url = Resource.classPathURL("/xml/test2.xml") ?: fail("Can't locate resource")
-        url.protocol shouldBeOneOf listOf("file", "jar")
-        url.toString() shouldEndWith "/xml/test2.xml"
-        val resource = XMLLoader().resource(url)
-        val document = resource.load()
-        document.documentElement.tagName shouldBe "test2"
-    }
+    override fun load(): T = value
+
+    override fun createResource(pathElements: Array<String>, isDirectory: Boolean): SyntheticResource<T> =
+            SyntheticResource(pathElements.last(), value, resourceLoader)
+
+    override fun toString() = name
 
 }

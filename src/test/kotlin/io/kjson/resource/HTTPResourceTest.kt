@@ -1,8 +1,8 @@
 /*
- * @(#) ResourceLoaderTest.kt
+ * @(#) HTTPResourceTest.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021, 2024, 2025 Peter Wall
+ * Copyright (c) 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,31 +26,40 @@
 package io.kjson.resource
 
 import kotlin.test.Test
-import kotlin.test.fail
 
 import java.io.File
 import java.net.URL
 
 import io.kstuff.test.shouldBe
-import io.kstuff.test.shouldBeOneOf
+import io.kstuff.test.shouldBeNonNull
 import io.kstuff.test.shouldEndWith
+import io.kstuff.test.shouldStartWith
+import io.kstuff.test.shouldThrow
 
-class ResourceTest {
+class HTTPResourceTest {
 
-    @Test fun `should display readable form of URL on toString`() {
-        val resource1 = XMLLoader().resource(File("src/test/resources/xml/test.xml"))
-        resource1.toString() shouldBe "src/test/resources/xml/test.xml"
-        val resource2 = XMLLoader().resource(URL("http://kjson.io/xml/test9.xml"))
-        resource2.toString() shouldBe "http://kjson.io/xml/test9.xml"
+    @Test fun `should read from remote URL`() {
+        val resource = XMLLoader().resource(URL("http://kjson.io/xml/"))
+        val resolved = resource.resolve("test1.xml")
+        resolved.resourceURL.toString() shouldBe "http://kjson.io/xml/test1.xml"
+        resolved.load().documentElement.tagName shouldBe "test"
     }
 
-    @Test fun `should get a classpath URL`() {
-        val url = Resource.classPathURL("/xml/test2.xml") ?: fail("Can't locate resource")
-        url.protocol shouldBeOneOf listOf("file", "jar")
-        url.toString() shouldEndWith "/xml/test2.xml"
-        val resource = XMLLoader().resource(url)
-        val document = resource.load()
-        document.documentElement.tagName shouldBe "test2"
+    @Test fun `should switch from local file to remote URL`() {
+        val resource = XMLLoader().resource(File("src/test/resources/xml/"))
+        resource.resolve("test1.xml").load().documentElement.tagName shouldBe "test1"
+        resource.resolve("http://kjson.io/xml/test1.xml").load().documentElement.tagName shouldBe "test"
+    }
+
+    @Test fun `should throw not-found exception when remote URL not found`() {
+        shouldThrow<ResourceNotFoundException> {
+            XMLLoader().resource(URL("http://kjson.io/xml/test9.xml")).load()
+        }.let {
+            with(it.message.shouldBeNonNull()) {
+                this shouldStartWith "Resource not found - "
+                this shouldEndWith "xml/test9.xml"
+            }
+        }
     }
 
 }

@@ -2,11 +2,16 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [Unreleased]
+## [6.0] - 2025-01-09
+### Added
+- `FileResource`, `HTTPResource`, `JARResource`: implementation classes for `Resource`
 ### Changed
+- `Resource`: converted to sealed base class, centralised `resolve()` mechanism
+- `ResourceLoader`: changed to use new `Resource` hierarchy
 - `ResourceLoader`: minor changes to filters
 - `pom.xml`, tests: converted to `should-test` library
 - `pom.xml`: updated Ktor dependency (used in tests)
+- tests: dynamically create JAR for testing
 
 ## [5.3] - 2024-11-20
 ### Changed
