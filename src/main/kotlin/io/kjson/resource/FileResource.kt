@@ -90,28 +90,30 @@ class FileResource<T> internal constructor(
      */
     override fun toString(): String {
         if (currentPathElements.isNotEmpty() && pathElements.startsWith(currentPathElements)) {
-            var i = currentPathElements.size
+            val i = currentPathElements.size
             if (i == pathElements.size)
                 return "."
             return buildString {
-                while (true) {
-                    append(pathElements[i++])
-                    if (i >= pathElements.size)
-                        break
-                    append(separator)
-                }
-                if (isDirectory)
-                    append(separator)
+                appendPathElements(i)
             }
         }
         return buildString {
-            for (pathElement in pathElements) {
-                append(separator)
-                append(pathElement)
-            }
-            if (isDirectory)
-                append(separator)
+            if (separator == '/')
+                append('/')
+            appendPathElements(0)
         }
+    }
+
+    private fun Appendable.appendPathElements(fromIndex: Int) {
+        var i = fromIndex
+        while (true) {
+            append(pathElements[i++])
+            if (i >= pathElements.size)
+                break
+            append(separator)
+        }
+        if (isDirectory)
+            append(separator)
     }
 
     companion object {
@@ -126,8 +128,8 @@ class FileResource<T> internal constructor(
         fun <R> createFileResource(resourceURL: URL, resourceLoader: ResourceLoader<R>): FileResource<R> {
             require(resourceURL.protocol == "file") { "Must be \"file:\" URL" }
             val pathElements = resourceURL.path.split('/').toMutableList()
-            require(pathElements[0].isEmpty()) { "FileResource absolute path does not begin with '/'" }
-            pathElements.removeAt(0)
+            if (pathElements[0].isEmpty())
+                pathElements.removeAt(0)
             val isDir = pathElements.last().isEmpty()
             if (isDir)
                 pathElements.removeAt(pathElements.lastIndex)
@@ -136,10 +138,9 @@ class FileResource<T> internal constructor(
         }
 
         fun <R> createFileResource(file: File, resourceLoader: ResourceLoader<R>): FileResource<R> {
-            val absolutePath = file.absolutePath
-            val pathElements = absolutePath.split(separator).toMutableList()
-            require(pathElements[0].isEmpty()) { "FileResource absolute path does not begin with '$separator'" }
-            pathElements.removeAt(0)
+            val pathElements = file.canonicalPath.split(separator).toMutableList()
+            if (pathElements[0].isEmpty())
+                pathElements.removeAt(0)
             val isDir = pathElements.last().isEmpty()
             if (isDir)
                 pathElements.removeAt(pathElements.lastIndex)
