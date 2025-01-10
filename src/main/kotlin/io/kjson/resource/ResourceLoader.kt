@@ -197,10 +197,6 @@ abstract class ResourceLoader<T>(
 
         fun defaultBaseURL(): URL = File(".").canonicalFile.toURI().toURL()
 
-        fun createFileURL(path: String): String = "file:$path"
-
-        fun createFileURL(file: File): String = createFileURL(file.canonicalPath)
-
     }
 
 }

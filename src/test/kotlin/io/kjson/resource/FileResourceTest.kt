@@ -45,13 +45,20 @@ class FileResourceTest {
         document.documentElement.tagName shouldBe "test1"
     }
 
-    @Test fun `should create ResourceLoader using Path`() {
+    @Test fun `should create resource using Path`() {
         val resource = XMLLoader().resource(FileSystems.getDefault().getPath("src/test/resources/xml/test1.xml"))
         val document = resource.load()
         document.documentElement.tagName shouldBe "test1"
     }
 
-    @Test fun `should create ResourceLoader using classpath`() {
+    @Test fun `should create resource using URL`() {
+        val url = File("src/test/resources/xml/test1.xml").toURI().toURL()
+        val resource = XMLLoader().resource(url)
+        val document = resource.load()
+        document.documentElement.tagName shouldBe "test1"
+    }
+
+    @Test fun `should create resource using classpath`() {
         val url = ResourceTest::class.java.getResource("/xml/test2.xml") ?: fail("Can't locate resource")
         val resource = XMLLoader().resource(url)
         val document = resource.load()

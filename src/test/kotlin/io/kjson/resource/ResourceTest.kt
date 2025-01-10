@@ -39,7 +39,7 @@ class ResourceTest {
 
     @Test fun `should display readable form of URL on toString`() {
         val resource1 = XMLLoader().resource(File("src/test/resources/xml/test.xml"))
-        resource1.toString() shouldBe "src/test/resources/xml/test.xml"
+        resource1.toString() shouldBe "src/test/resources/xml/test.xml".split('/').joinToString(File.separator)
         val resource2 = XMLLoader().resource(URL("http://kjson.io/xml/test9.xml"))
         resource2.toString() shouldBe "http://kjson.io/xml/test9.xml"
     }

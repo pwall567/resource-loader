@@ -83,14 +83,6 @@ class ResourceLoaderTest {
         filter.toPrefix shouldBe "localhost"
     }
 
-    @Test fun `should create file URL from String`() {
-        ResourceLoader.createFileURL("/abc/def") shouldBe "file:/abc/def"
-    }
-
-    @Test fun `should create file URL from File`() {
-        ResourceLoader.createFileURL(File("/abc/def")) shouldBe "file:/abc/def"
-    }
-
     @Test fun `should add request headers in connection filter`() {
         val xmlLoader = XMLLoader()
         xmlLoader.addAuthorizationFilter("localhost", "X-Test", "hippopotamus")

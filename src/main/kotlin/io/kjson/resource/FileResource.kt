@@ -30,6 +30,7 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
+
 import io.kjson.util.startsWith
 
 /**
@@ -141,18 +142,21 @@ class FileResource<T> internal constructor(
             val pathElements = file.canonicalPath.split(separator).toMutableList()
             if (pathElements[0].isEmpty())
                 pathElements.removeAt(0)
-            val isDir = pathElements.last().isEmpty()
-            if (isDir)
+            if (pathElements.last().isEmpty())
                 pathElements.removeAt(pathElements.lastIndex)
             pathElements.dropDotElements()
             return FileResource(pathElements.toTypedArray(), file.isDirectory, resourceLoader)
         }
 
         fun <R> createFileResource(path: Path, resourceLoader: ResourceLoader<R>): FileResource<R> {
-            val absolutePath = path.toAbsolutePath()
-            val pathElements = Array(absolutePath.nameCount) { absolutePath.getName(it).toString() }
-            val isDirectory = Files.isDirectory(absolutePath)
-            return FileResource(pathElements, isDirectory, resourceLoader)
+            val pathElements = path.toAbsolutePath().toString().split(separator).toMutableList()
+            if (pathElements[0].isEmpty())
+                pathElements.removeAt(0)
+            if (pathElements.last().isEmpty())
+                pathElements.removeAt(pathElements.lastIndex)
+            pathElements.dropDotElements()
+            val isDirectory = Files.isDirectory(path)
+            return FileResource(pathElements.toTypedArray(), isDirectory, resourceLoader)
         }
 
     }
