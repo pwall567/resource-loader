@@ -1,5 +1,5 @@
 /*
- * @(#) SyntheticResource.kt
+ * @(#) ResourceVetoedException.kt
  *
  * resource-loader  Resource loading mechanism
  * Copyright (c) 2025 Peter Wall
@@ -25,26 +25,4 @@
 
 package io.kjson.resource
 
-import java.io.ByteArrayInputStream
-import java.net.URL
-
-class SyntheticResource<T>(
-    private val name: String,
-    private val value: T,
-    resourceLoader: ResourceLoader<T>,
-) : Resource<T>(URL("http://localhost/$name"), false, resourceLoader) {
-
-    override fun open(): ResourceDescriptor {
-        return ResourceDescriptor(
-            inputStream = ByteArrayInputStream(ByteArray(0)),
-            url = url,
-        )
-    }
-
-    override fun resolve(relativeURL: String): Resource<T> = this
-
-    override fun load(): T = value
-
-    override fun toString() = name
-
-}
+class ResourceVetoedException(id: String) : ResourceLoaderException("Connection vetoed - $id")

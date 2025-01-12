@@ -25,20 +25,28 @@
 
 package io.kjson.resource
 
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.JarURLConnection
 import java.net.URL
+import java.net.URLConnection
+import java.nio.file.Paths
+import java.time.Instant
+
+import io.kjson.util.HTTPHeader
 
 /**
  * A resource, as described by a [URL] and loaded by a [ResourceLoader].
  *
  * @author  Peter Wall
  */
-sealed class Resource<T>(
-    val pathElements: Array<String>,
+open class Resource<T>(
+    val url: URL,
     val isDirectory: Boolean,
-    val resourceLoader: ResourceLoader<T>,
+    private val resourceLoader: ResourceLoader<T>,
 ) {
-
-    abstract val resourceURL: URL
 
     /**
      * Load the resource.  This function is delegated to the [ResourceLoader], which will load a resource of the target
@@ -49,89 +57,98 @@ sealed class Resource<T>(
     /**
      * Resolve a relative URL against the current `Resource`, returning a new `Resource`.
      */
-    fun resolve(relativeURL: String): Resource<T> {
-        if (relativeURL.contains(':'))
-            return resourceLoader.resource(URL(relativeURL))
-        if (relativeURL.isEmpty()) {
-            return if (isDirectory)
-                this
-            else
-                createResource(pathElements.dropLast(1).toTypedArray(), true)
-        }
-        val relativeURLElements = relativeURL.split('/').toMutableList()
-        val newPath: MutableList<String>
-        if (relativeURLElements[0].isEmpty()) { // starts with slash - absolute path
-            if (relativeURLElements.size == 1)
-                return createResource(emptyArray(), true)
-            newPath = mutableListOf()
-            relativeURLElements.removeAt(0)
-        }
-        else {
-            newPath = pathElements.toMutableList()
-            if (!isDirectory)
-                newPath.removeLast()
-        }
-        var isDir = true
-        for (i in relativeURLElements.indices) {
-            when (relativeURLElements[i]) {
-                "." -> isDir = true
-                ".." -> {
-                    if (newPath.isEmpty())
-                        throw IllegalArgumentException("Illegal use of \"..\" in URL")
-                    newPath.removeLast()
-                    isDir = true
-                }
-                "" -> {
-                    if (i == relativeURLElements.lastIndex) {
-                        isDir = true
-                        break
-                    }
-                    throw IllegalArgumentException("Illegal use of \"//\" in URL")
-                }
-                else -> {
-                    newPath.add(relativeURLElements[i])
-                    isDir = false
-                }
-            }
-        }
-        return createResource(newPath.toTypedArray(), isDir)
+    open fun resolve(relativeURL: String): Resource<T> {
+        val resolvedURL = URL(url, relativeURL)
+        return Resource(resolvedURL, resolvedURL.toString().endsWith('/'), resourceLoader)
     }
-
-    protected abstract fun createResource(
-        pathElements: Array<String>,
-        isDirectory: Boolean,
-    ): Resource<T>
 
     /**
      * Open a [Resource] for reading.  The result of this function is a [ResourceDescriptor], which contains an open
      * `InputStream` and all the metadata known about the resource.
      */
-    abstract fun open(): ResourceDescriptor
+    open fun open(): ResourceDescriptor {
+        if (isDirectory)
+            throw ResourceLoaderException("Can't load directory resource $url")
+        try {
+            var conn: URLConnection = url.openConnection()
+            for (filter in resourceLoader.connectionFilters)
+                conn = filter(conn) ?: throw ResourceVetoedException(toString())
+            return when (conn) {
+                is HttpURLConnection -> {
+                    // TODO think about adding support for ifModifiedSince / ETag
+                    if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                        throw ResourceNotFoundException(toString())
+                    if (conn.responseCode != HttpURLConnection.HTTP_OK)
+                        throw IOException("Error status - ${conn.responseCode} - $url")
+                    val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
+                    val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
+                    val contentTypeHeader = conn.contentType?.let { HTTPHeader.parse(it) }
+                    val charsetName: String? = contentTypeHeader?.element()?.parameter("charset")
+                    val mimeType: String? = contentTypeHeader?.firstElementText()
+                    ResourceDescriptor(
+                        inputStream = conn.inputStream,
+                        url = url,
+                        charsetName = charsetName,
+                        size = contentLength,
+                        time = lastModified,
+                        mimeType = mimeType,
+                        eTag = conn.getHeaderField("etag"),
+                    )
+                }
+                is JarURLConnection -> {
+                    val jarEntry = conn.jarEntry
+                    ResourceDescriptor(
+                        inputStream = conn.inputStream,
+                        url = url,
+                        size = jarEntry.size,
+                        time = Instant.ofEpochMilli(jarEntry.time),
+                    )
+                }
+                else -> {
+                    val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
+                    val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
+                    val contentTypeHeader = conn.contentType?.let { HTTPHeader.parse(it) }
+                    val mimeType: String? = contentTypeHeader?.firstElementText()
+                    ResourceDescriptor(
+                        inputStream = conn.inputStream,
+                        url = url,
+                        size = contentLength,
+                        time = lastModified,
+                        mimeType = mimeType,
+                    )
+                }
+            }
+        }
+        catch (rle: ResourceLoaderException) {
+            throw rle
+        }
+        catch (fnfe: FileNotFoundException) {
+            throw ResourceNotFoundException(toString())
+        }
+        catch (e: Exception) {
+            throw ResourceLoaderException("Error opening resource $url", e)
+        }
+    }
+
+    override fun toString(): String {
+        if (url.protocol != "file")
+            return url.toString()
+        val filePath = if (File.separatorChar == '/') url.path else Paths.get(url.toURI()).toString()
+        return when {
+            !filePath.startsWith(currentPath) -> filePath
+            filePath.length == currentPath.length -> "."
+            else -> filePath.substring(currentPath.length)
+        }
+    }
 
     companion object {
+
+        val currentPath = File(".").canonicalPath + File.separatorChar
 
         /**
          * Get a URL for a resource in the classpath (will be either a `file:` or a `jar:` URL).
          */
         fun classPathURL(name: String): URL? = Resource::class.java.getResource(name)
-
-        fun MutableList<String>.dropDotElements(): MutableList<String> {
-            var i = 0
-            while (i < size) {
-                when (this[i]) {
-                    "." -> removeAt(i)
-                    ".." -> {
-                        if (i == 0)
-                            throw IllegalArgumentException("Illegal use of \"..\" in URL")
-                        removeAt(i)
-                        removeAt(--i)
-                    }
-                    "" -> throw IllegalArgumentException("Illegal empty path element in URL")
-                    else -> i++
-                }
-            }
-            return this
-        }
 
     }
 

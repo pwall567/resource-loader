@@ -81,7 +81,7 @@
     <dependency>
       <groupId>io.kstuff</groupId>
       <artifactId>should-test</artifactId>
-      <version>4.0</version>
+      <version>4.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>

@@ -2,7 +2,7 @@
  * @(#) ResourceNotFoundException.kt
  *
  * resource-loader  Resource loading mechanism
- * Copyright (c) 2021 Peter Wall
+ * Copyright (c) 2021, 2025 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,4 @@
 
 package io.kjson.resource
 
-import java.net.URL
-
-class ResourceNotFoundException(url: URL) : ResourceLoaderException("Resource not found - $url")
+class ResourceNotFoundException(id: String) : ResourceLoaderException("Resource not found - $id")

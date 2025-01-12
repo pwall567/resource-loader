@@ -29,11 +29,9 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLConnection
+import java.nio.file.Files
 import java.nio.file.Path
 
-import io.kjson.resource.FileResource.Companion.createFileResource
-import io.kjson.resource.HTTPResource.Companion.createHTTPResource
-import io.kjson.resource.JARResource.Companion.createJARResource
 import net.pwall.text.Wildcard
 
 /**
@@ -60,22 +58,17 @@ abstract class ResourceLoader<T>(
     /**
      * Get a [Resource], specifying a [File].
      */
-    fun resource(resourceFile: File): Resource<T> = createFileResource(resourceFile, this)
+    fun resource(file: File): Resource<T> = Resource(file.toURI().toURL(), file.isDirectory, this)
 
     /**
      * Get a [Resource], specifying a [Path].
      */
-    fun resource(resourcePath: Path): Resource<T> = createFileResource(resourcePath, this)
+    fun resource(path: Path): Resource<T> = Resource(path.toUri().toURL(), Files.isDirectory(path), this)
 
     /**
      * Get a [Resource], specifying a [URL].
      */
-    fun resource(resourceURL: URL): Resource<T> = when (resourceURL.protocol) {
-        "http", "https" -> createHTTPResource(resourceURL, this)
-        "file" -> createFileResource(resourceURL, this)
-        "jar" -> createJARResource(resourceURL, this)
-        else -> throw ResourceLoaderException("URL not recognised: $resourceURL")
-    }
+    fun resource(url: URL): Resource<T> = Resource(url, url.toString().endsWith('/'), this)
 
     /**
      * Create a [SyntheticResource], specifying the name and value.
@@ -96,7 +89,7 @@ abstract class ResourceLoader<T>(
     /**
      * Load the resource identified by an identifier string, which is resolved against the base URL.
      */
-    fun load(resourceId: String): T = load(baseURL.resolve(resourceId))
+    fun load(resourceId: String): T = load(URL(baseURL, resourceId))
 
     /**
      * Add the default extension to a file name or URL string.
@@ -192,8 +185,6 @@ abstract class ResourceLoader<T>(
             host.endsWith(target.substring(1)) || host == target.substring(2)
         else
             host == target
-
-        fun URL.resolve(relativeURL: String) = URL(this, relativeURL)
 
         fun defaultBaseURL(): URL = File(".").canonicalFile.toURI().toURL()
 
