@@ -69,8 +69,9 @@ open class Resource<T>(
     open fun open(): ResourceDescriptor {
         if (isDirectory)
             throw ResourceLoaderException("Can't load directory resource $url")
+        val extendedURL = url.addDefaultExtension()
         try {
-            var conn: URLConnection = url.openConnection()
+            var conn: URLConnection = extendedURL.openConnection()
             for (filter in resourceLoader.connectionFilters)
                 conn = filter(conn) ?: throw ResourceVetoedException(toString())
             return when (conn) {
@@ -79,7 +80,7 @@ open class Resource<T>(
                     if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
                         throw ResourceNotFoundException(toString())
                     if (conn.responseCode != HttpURLConnection.HTTP_OK)
-                        throw IOException("Error status - ${conn.responseCode} - $url")
+                        throw IOException("Error status - ${conn.responseCode} - $extendedURL")
                     val contentLength = conn.contentLengthLong.takeIf { it >= 0 }
                     val lastModified = conn.lastModified.takeIf { it != 0L }?.let { Instant.ofEpochMilli(it) }
                     val contentTypeHeader = conn.contentType?.let { HTTPHeader.parse(it) }
@@ -87,7 +88,7 @@ open class Resource<T>(
                     val mimeType: String? = contentTypeHeader?.firstElementText()
                     ResourceDescriptor(
                         inputStream = conn.inputStream,
-                        url = url,
+                        url = extendedURL,
                         charsetName = charsetName,
                         size = contentLength,
                         time = lastModified,
@@ -99,7 +100,7 @@ open class Resource<T>(
                     val jarEntry = conn.jarEntry
                     ResourceDescriptor(
                         inputStream = conn.inputStream,
-                        url = url,
+                        url = extendedURL,
                         size = jarEntry.size,
                         time = Instant.ofEpochMilli(jarEntry.time),
                     )
@@ -111,7 +112,7 @@ open class Resource<T>(
                     val mimeType: String? = contentTypeHeader?.firstElementText()
                     ResourceDescriptor(
                         inputStream = conn.inputStream,
-                        url = url,
+                        url = extendedURL,
                         size = contentLength,
                         time = lastModified,
                         mimeType = mimeType,
@@ -126,9 +127,23 @@ open class Resource<T>(
             throw ResourceNotFoundException(toString())
         }
         catch (e: Exception) {
-            throw ResourceLoaderException("Error opening resource $url", e)
+            throw ResourceLoaderException("Error opening resource $extendedURL", e)
         }
     }
+
+    private fun URL.addDefaultExtension(): URL {
+        val defaultExtension = resourceLoader.defaultExtension ?: return this
+        val filename = url.path.substringAfterLast('/')
+        return if (filename.isEmpty() || filename.contains('.'))
+            this
+        else
+            URL(this, "$filename.$defaultExtension")
+    }
+
+    override fun equals(other: Any?): Boolean = this === other || other is Resource<*> && url sameAs other.url &&
+            isDirectory == other.isDirectory && resourceLoader === other.resourceLoader
+
+    override fun hashCode(): Int = url.relevantHashCode() xor isDirectory.hashCode() xor resourceLoader.hashCode()
 
     override fun toString(): String {
         if (url.protocol != "file")
@@ -149,6 +164,54 @@ open class Resource<T>(
          * Get a URL for a resource in the classpath (will be either a `file:` or a `jar:` URL).
          */
         fun classPathURL(name: String): URL? = Resource::class.java.getResource(name)
+
+        /**
+         * Compare URLs (can't use `equals()` because that may involve network operations).
+         */
+        infix fun URL.sameAs(other: URL): Boolean {
+            if (protocol != other.protocol)
+                return false
+            when {
+                host.isNullOrEmpty() -> {
+                    if (!other.host.isNullOrEmpty())
+                        return false
+                }
+                host.equals("localhost", ignoreCase = true) || host == "127.0.0.1" -> {
+                    if (!(other.host.equals("localhost", ignoreCase = true) || other.host == "127.0.0.1"))
+                        return false
+                }
+                else -> {
+                    if (!host.equals(other.host, ignoreCase = true))
+                        return false
+                }
+            }
+            if (port != other.port)
+                return false
+            if (path.isNullOrEmpty()) {
+                if (!other.path.isNullOrEmpty())
+                    return false
+            }
+            else {
+                if (path != other.path)
+                    return false
+            }
+            if (query != other.query)
+                return false
+            if (ref != other.ref)
+                return false
+            return true
+        }
+
+        /**
+         * Hash code of "relevant" fields of URL (can't use `hashCode()` because that may involve network operations).
+         */
+        fun URL.relevantHashCode(): Int = protocol.hashCode() +
+                (if (host.isNullOrEmpty()) 0 else
+                        if (host == "127.0.0.1") "localhost".hashCode() else host.lowercase().hashCode()) +
+                port +
+                (if (path.isNullOrEmpty()) 0 else path.hashCode()) +
+                (if (query == null) 0 else query.hashCode()) +
+                (if (ref == null) 0 else ref.hashCode())
 
     }
 

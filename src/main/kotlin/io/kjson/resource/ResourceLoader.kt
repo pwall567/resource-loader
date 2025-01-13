@@ -68,7 +68,12 @@ abstract class ResourceLoader<T>(
     /**
      * Get a [Resource], specifying a [URL].
      */
-    fun resource(url: URL): Resource<T> = Resource(url, url.toString().endsWith('/'), this)
+    fun resource(url: URL): Resource<T> {
+        return if (url.protocol == "file")
+            resource(File(url.toURI()))
+        else
+            Resource(url, url.toString().endsWith('/'), this)
+    }
 
     /**
      * Create a [SyntheticResource], specifying the name and value.

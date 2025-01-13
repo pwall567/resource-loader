@@ -2,10 +2,12 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [6.0] - 2025-01-12
+## [6.0] - 2025-01-14
 ### Changed
 - `Resource`, `ResourceLoader`: changed to make better use of JVM URL features
+- `Resource`: added `equals()` and `hashCode()`
 - `ResourceLoader`: minor changes to filters
+- `ResourceLoader`: fixed use of default extension
 - `pom.xml`, tests: converted to `should-test` library
 - `pom.xml`: updated Ktor dependency (used in tests)
 - tests: dynamically create JAR for testing

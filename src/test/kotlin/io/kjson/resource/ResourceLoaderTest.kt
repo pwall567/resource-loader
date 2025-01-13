@@ -32,6 +32,7 @@ import java.io.File
 import java.net.URL
 
 import io.kstuff.test.shouldBe
+import io.kstuff.test.shouldEndWith
 import io.kstuff.test.shouldStartWith
 
 import io.ktor.server.engine.embeddedServer
@@ -60,6 +61,14 @@ class ResourceLoaderTest {
         with(xmlLoader.load(url)) {
             documentElement.tagName shouldBe "test2"
         }
+    }
+
+    @Test fun `should set isDirectory correctly for file URL`() {
+        val dirResource = XMLLoader().resource(File("src/test/resources/xml"))
+        dirResource.isDirectory shouldBe true
+        dirResource.resolve("test1.xml").toString() shouldEndWith "src/test/resources/xml/test1.xml"
+        val fileResource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
+        fileResource.isDirectory shouldBe false
     }
 
     @Test fun `should create AuthorizationFilter`() {

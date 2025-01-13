@@ -36,6 +36,7 @@ import java.util.jar.Attributes
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
+import io.kjson.resource.Resource.Companion.relevantHashCode
 
 import io.kstuff.test.shouldBe
 import io.kstuff.test.shouldBeNonNull
@@ -43,6 +44,8 @@ import io.kstuff.test.shouldBeOneOf
 import io.kstuff.test.shouldEndWith
 import io.kstuff.test.shouldStartWith
 import io.kstuff.test.shouldThrow
+
+import io.kjson.resource.Resource.Companion.sameAs
 
 class ResourceTest {
 
@@ -116,6 +119,11 @@ class ResourceTest {
         }
     }
 
+    @Test fun `should apply default extension when reading from File resource`() {
+        val resource = xmlLoader.resource(File("src/test/resources/xml/test1"))
+        resource.load().documentElement.tagName shouldBe "test1"
+    }
+
     @Test fun `should throw not-found exception when File resource not found`() {
         shouldThrow<ResourceNotFoundException> {
             xmlLoader.resource(File("src/test/resources/xml/test9.xml")).load()
@@ -134,6 +142,11 @@ class ResourceTest {
         val resolved = resource.resolve("test1.xml")
         resolved.toString() shouldBe "http://kjson.io/xml/test1.xml"
         resolved.load().documentElement.tagName shouldBe "test"
+    }
+
+    @Test fun `should apply default extension when reading from remote URL`() {
+        val resource = xmlLoader.resource(URL("http://kjson.io/xml/test1"))
+        resource.load().documentElement.tagName shouldBe "test"
     }
 
     @Test fun `should switch from local file to remote URL`() {
@@ -179,6 +192,12 @@ class ResourceTest {
         sibling.load().documentElement.tagName shouldBe "jar-test-2"
     }
 
+    @Test fun `should apply default extension when reading from JAR file`() {
+        val jarURL = URL("jar:${jarFile.absoluteFile.toURI()}!/xml/jar-file-1")
+        val resource = xmlLoader.resource(jarURL)
+        resource.load().documentElement.tagName shouldBe "jar-test-1"
+    }
+
     @Test fun `should throw ResourceNotFoundException when JAR entry not found`() {
         val jarURL = URL("jar:${jarFile.absoluteFile.toURI()}!/xml/jar-file-999.xml")
         val resource = xmlLoader.resource(jarURL)
@@ -219,8 +238,8 @@ class ResourceTest {
     }
 
     @Test fun `should display readable form of URL on toString`() {
-        val resource1 = xmlLoader.resource(File("src/test/resources/xml/test.xml"))
-        resource1.toString() shouldBe "src/test/resources/xml/test.xml".split('/').joinToString(File.separator)
+        val resource1 = xmlLoader.resource(File("src/test/resources/xml/test1.xml"))
+        resource1.toString() shouldBe "src/test/resources/xml/test1.xml".split('/').joinToString(File.separator)
         val resource2 = xmlLoader.resource(URL("http://kjson.io/xml/test9.xml"))
         resource2.toString() shouldBe "http://kjson.io/xml/test9.xml"
     }
@@ -232,6 +251,53 @@ class ResourceTest {
         val resource = xmlLoader.resource(url)
         val document = resource.load()
         document.documentElement.tagName shouldBe "test2"
+    }
+
+    @Test fun `should compare URLs correctly`() {
+        val fileURL = File("src/test/resources/xml/test1.xml").toURI().toURL()
+        val httpURL = URL("https://example.com/test.txt")
+        val localhostURL = URL("http://localhost:8080/file.xml")
+        val jarURL = URL("jar:$jarURLString!/xml/jar-file-1.xml")
+
+        (fileURL sameAs File("src/test/resources/xml/test1.xml").toURI().toURL()) shouldBe true
+        fileURL.relevantHashCode() shouldBe File("src/test/resources/xml/test1.xml").toURI().toURL().relevantHashCode()
+        (fileURL sameAs File("src/test/resources/xml/test1.xml").absoluteFile.toURI().toURL()) shouldBe true
+        fileURL.relevantHashCode() shouldBe
+                File("src/test/resources/xml/test1.xml").absoluteFile.toURI().toURL().relevantHashCode()
+        (fileURL sameAs File("src/test/resources/xml/test2.xml").toURI().toURL()) shouldBe false
+        (fileURL sameAs httpURL) shouldBe false
+        (fileURL sameAs localhostURL) shouldBe false
+        (fileURL sameAs jarURL) shouldBe false
+
+        (httpURL sameAs URL("https://example.com/test.txt")) shouldBe true
+        httpURL.relevantHashCode() shouldBe URL("https://example.com/test.txt").relevantHashCode()
+        (httpURL sameAs URL("https://example.COM/test.txt")) shouldBe true
+        httpURL.relevantHashCode() shouldBe URL("https://example.COM/test.txt").relevantHashCode()
+        (httpURL sameAs URL("https://example.com/TEST.txt")) shouldBe false
+        (httpURL sameAs URL("https://example.com/test1.txt")) shouldBe false
+        (httpURL sameAs URL("https://example.com:8080/test.txt")) shouldBe false
+        (httpURL sameAs fileURL) shouldBe false
+        (httpURL sameAs localhostURL) shouldBe false
+        (httpURL sameAs jarURL) shouldBe false
+
+        (localhostURL sameAs URL("http://localhost:8080/file.xml")) shouldBe true
+        localhostURL.relevantHashCode() shouldBe URL("http://localhost:8080/file.xml").relevantHashCode()
+        (localhostURL sameAs URL("http://LOCALHOST:8080/file.xml")) shouldBe true
+        localhostURL.relevantHashCode() shouldBe URL("http://LOCALHOST:8080/file.xml").relevantHashCode()
+        (localhostURL sameAs URL("http://127.0.0.1:8080/file.xml")) shouldBe true
+        localhostURL.relevantHashCode() shouldBe URL("http://127.0.0.1:8080/file.xml").relevantHashCode()
+        (localhostURL sameAs URL("http://localhost/file.xml")) shouldBe false
+        (localhostURL sameAs URL("http://localhost:8080/file1.xml")) shouldBe false
+        (localhostURL sameAs fileURL) shouldBe false
+        (localhostURL sameAs httpURL) shouldBe false
+        (localhostURL sameAs jarURL) shouldBe false
+
+        (jarURL sameAs URL("jar:$jarURLString!/xml/jar-file-1.xml")) shouldBe true
+        jarURL.relevantHashCode() shouldBe URL("jar:$jarURLString!/xml/jar-file-1.xml").relevantHashCode()
+        (jarURL sameAs URL("jar:$jarURLString!/xml/jar-file-2.xml")) shouldBe false
+        (jarURL sameAs fileURL) shouldBe false
+        (jarURL sameAs httpURL) shouldBe false
+        (jarURL sameAs localhostURL) shouldBe false
     }
 
     @Suppress("ConstPropertyName")
