@@ -40,6 +40,8 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+
+import io.kjson.resource.ResourceTest.Companion.pathOf
 import net.pwall.text.Wildcard
 
 class ResourceLoaderTest {
@@ -66,7 +68,7 @@ class ResourceLoaderTest {
     @Test fun `should set isDirectory correctly for file URL`() {
         val dirResource = XMLLoader().resource(File("src/test/resources/xml"))
         dirResource.isDirectory shouldBe true
-        dirResource.resolve("test1.xml").toString() shouldEndWith "src/test/resources/xml/test1.xml"
+        dirResource.resolve("test1.xml").toString() shouldEndWith pathOf("src", "test", "resources", "xml", "test1.xml")
         val fileResource = XMLLoader().resource(File("src/test/resources/xml/test1.xml"))
         fileResource.isDirectory shouldBe false
     }

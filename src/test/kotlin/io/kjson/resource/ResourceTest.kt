@@ -36,7 +36,6 @@ import java.util.jar.Attributes
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
-import io.kjson.resource.Resource.Companion.relevantHashCode
 
 import io.kstuff.test.shouldBe
 import io.kstuff.test.shouldBeNonNull
@@ -45,6 +44,7 @@ import io.kstuff.test.shouldEndWith
 import io.kstuff.test.shouldStartWith
 import io.kstuff.test.shouldThrow
 
+import io.kjson.resource.Resource.Companion.relevantHashCode
 import io.kjson.resource.Resource.Companion.sameAs
 
 class ResourceTest {
@@ -56,20 +56,15 @@ class ResourceTest {
     @Test fun `should create FileResource from URL for directory`() {
         val url = File("src/test/resources/xml").toURI().toURL()
         val fileResource = xmlLoader.resource(url)
-        if (File.separatorChar == '/')
-            fileResource.toString() shouldBe "src/test/resources/xml/"
-        else
-            fileResource.toString() shouldBe "src\\test\\resources\\xml"
+        fileResource.toString() shouldBe pathOf("src", "test", "resources", "xml",
+                trailingSlash = File.separatorChar == '/')
         fileResource.isDirectory shouldBe true
     }
 
     @Test fun `should create FileResource from URL for file`() {
         val url = File("src/test/resources/xml/test1.xml").toURI().toURL()
         val fileResource = xmlLoader.resource(url)
-        if (File.separatorChar == '/')
-            fileResource.toString() shouldBe "src/test/resources/xml/test1.xml"
-        else
-            fileResource.toString() shouldBe "src\\test\\resources\\xml\\test1.xml"
+        fileResource.toString() shouldBe pathOf("src", "test", "resources", "xml", "test1.xml")
         fileResource.isDirectory shouldBe false
     }
 
@@ -129,10 +124,7 @@ class ResourceTest {
             xmlLoader.resource(File("src/test/resources/xml/test9.xml")).load()
         }.let {
             with(it.message.shouldBeNonNull()) {
-                if (File.separatorChar == '/')
-                    this shouldBe "Resource not found - src/test/resources/xml/test9.xml"
-                else
-                    this shouldBe "Resource not found - src\\test\\resources\\xml\\test9.xml"
+                this shouldBe "Resource not found - " + pathOf("src", "test", "resources", "xml", "test9.xml")
             }
         }
     }
@@ -327,6 +319,9 @@ class ResourceTest {
             write(bytes)
             closeEntry()
         }
+
+        fun pathOf(vararg elements: String, trailingSlash: Boolean = false) =
+                elements.joinToString(File.separator, postfix = if (trailingSlash) "/" else "")
 
     }
 
