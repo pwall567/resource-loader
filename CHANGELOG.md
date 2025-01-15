@@ -2,6 +2,10 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [Unreleased]
+### Changed
+- tests: simplified tests involving Windows paths
+
 ## [6.0] - 2025-01-14
 ### Changed
 - `Resource`, `ResourceLoader`: changed to make better use of JVM URL features

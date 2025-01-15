@@ -56,8 +56,8 @@ class ResourceTest {
     @Test fun `should create FileResource from URL for directory`() {
         val url = File("src/test/resources/xml").toURI().toURL()
         val fileResource = xmlLoader.resource(url)
-        fileResource.toString() shouldBe pathOf("src", "test", "resources", "xml",
-                trailingSlash = File.separatorChar == '/')
+        fileResource.toString() shouldBe pathOf("src", "test", "resources", "xml") +
+                if (File.separatorChar == '/') "/" else ""
         fileResource.isDirectory shouldBe true
     }
 
@@ -320,8 +320,7 @@ class ResourceTest {
             closeEntry()
         }
 
-        fun pathOf(vararg elements: String, trailingSlash: Boolean = false) =
-                elements.joinToString(File.separator, postfix = if (trailingSlash) "/" else "")
+        fun pathOf(vararg elements: String) = elements.joinToString(File.separator)
 
     }
 
