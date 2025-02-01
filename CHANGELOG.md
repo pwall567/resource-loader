@@ -2,8 +2,9 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [Unreleased]
+## [6.1] - 2025-02-02
 ### Changed
+- `pom.xml`: updated Kotlin version to 2.0.21, updated dependency versions
 - tests: simplified tests involving Windows paths
 
 ## [6.0] - 2025-01-14

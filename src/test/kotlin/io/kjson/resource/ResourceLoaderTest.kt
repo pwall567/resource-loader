@@ -42,7 +42,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
 import io.kjson.resource.ResourceTest.Companion.pathOf
-import net.pwall.text.Wildcard
+import io.kstuff.text.Wildcard
 
 class ResourceLoaderTest {
 

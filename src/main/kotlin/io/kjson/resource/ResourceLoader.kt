@@ -32,7 +32,7 @@ import java.net.URLConnection
 import java.nio.file.Files
 import java.nio.file.Path
 
-import net.pwall.text.Wildcard
+import io.kstuff.text.Wildcard
 
 /**
  * The base `ResourceLoader` class.

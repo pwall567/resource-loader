@@ -31,7 +31,7 @@ import java.net.URL
 import java.nio.charset.Charset
 import java.time.Instant
 
-import net.pwall.pipeline.codec.DynamicReader
+import io.jstuff.pipeline.codec.DynamicReader
 
 /**
  * A Resource Descriptor.  This contains all the information known about the resource, to allow the loading function to
