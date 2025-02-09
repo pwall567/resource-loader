@@ -165,25 +165,25 @@ in the local filesystem described by `localDirectory` (a `java.io.File`).
 
 ## Dependency Specification
 
-The latest version of the library is 6.1, and it may be obtained from the Maven Central repository.
+The latest version of the library is 6.2, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>6.1</version>
+      <version>6.2</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:6.1'
+    implementation 'io.kjson:resource-loader:6.2'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:6.1")
+    implementation("io.kjson:resource-loader:6.2")
 ```
 
 Peter Wall
 
-2025-02-02
+2025-02-09

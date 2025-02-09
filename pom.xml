@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>6.1</version>
+  <version>6.2</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
@@ -68,7 +68,7 @@
     <dependency>
       <groupId>io.kstuff</groupId>
       <artifactId>wildcard</artifactId>
-      <version>2.0</version>
+      <version>2.1</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
