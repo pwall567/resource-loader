@@ -32,7 +32,7 @@ import java.net.URLConnection
 import java.nio.file.Files
 import java.nio.file.Path
 
-import io.kstuff.text.Wildcard
+import io.jstuff.text.StringMatcher
 
 /**
  * The base `ResourceLoader` class.
@@ -115,21 +115,28 @@ abstract class ResourceLoader<T>(
      * Add an authorization filter for HTTP connections.
      */
     fun addAuthorizationFilter(host: String, headerName: String, headerValue: String?) {
-        addConnectionFilter(AuthorizationFilter(Wildcard(host), headerName, headerValue))
+        addConnectionFilter(AuthorizationFilter(StringMatcher.simple(host), headerName, headerValue))
     }
 
     /**
-     * Add an authorization filter for HTTP connections (specifying a wildcarded hostname).
+     * Add an authorization filter for HTTP connections (specifying a [StringMatcher] for hostname).
      */
-    fun addAuthorizationFilter(hostWildcard: Wildcard, headerName: String, headerValue: String?) {
-        addConnectionFilter(AuthorizationFilter(hostWildcard, headerName, headerValue))
+    fun addAuthorizationFilter(hostMatcher: StringMatcher, headerName: String, headerValue: String?) {
+        addConnectionFilter(AuthorizationFilter(hostMatcher, headerName, headerValue))
     }
 
     /**
      * Add a redirection filter for HTTP connections.
      */
     fun addRedirectionFilter(fromHost: String, fromPort: Int = -1, toHost: String, toPort: Int = -1) {
-        addConnectionFilter(RedirectionFilter(fromHost, fromPort, toHost, toPort))
+        addConnectionFilter(RedirectionFilter(StringMatcher.simple(fromHost), fromPort, toHost, toPort))
+    }
+
+    /**
+     * Add a redirection filter for HTTP connections (specifying a [StringMatcher] for hostname).
+     */
+    fun addRedirectionFilter(fromHostMatcher: StringMatcher, fromPort: Int = -1, toHost: String, toPort: Int = -1) {
+        addConnectionFilter(RedirectionFilter(fromHostMatcher, fromPort, toHost, toPort))
     }
 
     /**
@@ -140,13 +147,13 @@ abstract class ResourceLoader<T>(
     }
 
     class AuthorizationFilter(
-        val hostWildcard: Wildcard,
+        val hostMatcher: StringMatcher,
         val headerName: String,
         val headerValue: String?,
     ) : (URLConnection) -> URLConnection? {
 
         override fun invoke(connection: URLConnection): URLConnection {
-            if (connection is HttpURLConnection && hostWildcard matches connection.url.host)
+            if (connection is HttpURLConnection && hostMatcher.matches(connection.url.host))
                 connection.addRequestProperty(headerName, headerValue)
             return connection
         }
@@ -154,7 +161,7 @@ abstract class ResourceLoader<T>(
     }
 
     class RedirectionFilter(
-        val fromHost: String,
+        val fromHostMatcher: StringMatcher,
         val fromPort: Int = -1,
         val toHost: String,
         val toPort: Int = -1,
@@ -162,7 +169,7 @@ abstract class ResourceLoader<T>(
 
         override fun invoke(connection: URLConnection): URLConnection {
             val url = connection.url
-            return if (connection !is HttpURLConnection || !url.matchesHost(fromHost) || url.port != fromPort)
+            return if (connection !is HttpURLConnection || !fromHostMatcher.matches(url.host) || url.port != fromPort)
                 connection
             else
                 URL(url.protocol, toHost, toPort, url.file).openConnection() as HttpURLConnection
@@ -185,11 +192,6 @@ abstract class ResourceLoader<T>(
     }
 
     companion object {
-
-        internal fun URL.matchesHost(target: String): Boolean = if (target.startsWith("*."))
-            host.endsWith(target.substring(1)) || host == target.substring(2)
-        else
-            host == target
 
         fun defaultBaseURL(): URL = File(".").canonicalFile.toURI().toURL()
 

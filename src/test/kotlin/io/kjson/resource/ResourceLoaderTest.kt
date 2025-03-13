@@ -31,6 +31,8 @@ import kotlin.test.fail
 import java.io.File
 import java.net.URL
 
+import io.jstuff.text.StringMatcher
+
 import io.kstuff.test.shouldBe
 import io.kstuff.test.shouldEndWith
 import io.kstuff.test.shouldStartWith
@@ -42,7 +44,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
 import io.kjson.resource.ResourceTest.Companion.pathOf
-import io.kstuff.text.Wildcard
 
 class ResourceLoaderTest {
 
@@ -74,15 +75,15 @@ class ResourceLoaderTest {
     }
 
     @Test fun `should create AuthorizationFilter`() {
-        val filter = ResourceLoader.AuthorizationFilter(Wildcard("test*"), "Test", "me")
-        filter.hostWildcard.matches("test1") shouldBe true
+        val filter = ResourceLoader.AuthorizationFilter(StringMatcher.wildcard("test*"), "Test", "me")
+        filter.hostMatcher.matches("test1") shouldBe true
         filter.headerName shouldBe "Test"
         filter.headerValue shouldBe "me"
     }
 
     @Test fun `should create RedirectionFilter`() {
-        val filter = ResourceLoader.RedirectionFilter("example.com", 80, "localhost", 8080)
-        filter.fromHost shouldBe "example.com"
+        val filter = ResourceLoader.RedirectionFilter(StringMatcher.simple("example.com"), 80, "localhost", 8080)
+        filter.fromHostMatcher shouldBe StringMatcher.simple("example.com")
         filter.fromPort shouldBe 80
         filter.toHost shouldBe "localhost"
         filter.toPort shouldBe 8080

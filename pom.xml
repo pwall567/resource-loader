@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>resource-loader</artifactId>
-  <version>6.2</version>
+  <version>6.3</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
@@ -66,9 +66,9 @@
       <version>6.0</version>
     </dependency>
     <dependency>
-      <groupId>io.kstuff</groupId>
-      <artifactId>wildcard</artifactId>
-      <version>2.1</version>
+      <groupId>io.jstuff</groupId>
+      <artifactId>string-matcher</artifactId>
+      <version>1.1</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
@@ -77,7 +77,7 @@
     <dependency>
       <groupId>io.kstuff</groupId>
       <artifactId>should-test</artifactId>
-      <version>4.4</version>
+      <version>4.5</version>
       <scope>test</scope>
     </dependency>
     <dependency>

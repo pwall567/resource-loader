@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/pwall567/resource-loader/actions/workflows/build.yml/badge.svg)](https://github.com/pwall567/resource-loader/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Kotlin](https://img.shields.io/static/v1?label=Kotlin&message=v2.0.21&color=7f52ff&logo=kotlin&logoColor=7f52ff)](https://github.com/JetBrains/kotlin/releases/tag/v2.0.21)
-[![Maven Central](https://img.shields.io/maven-central/v/io.kjson/resource-loader?label=Maven%20Central)](https://search.maven.org/search?q=g:%22io.kjson%22%20AND%20a:%22resource-loader%22)
+[![Maven Central](https://img.shields.io/maven-central/v/io.kjson/resource-loader?label=Maven%20Central)](https://central.sonatype.com/artifact/io.kjson/resource-loader)
 
 Resource loading mechanism
 
@@ -123,14 +123,16 @@ If multiple headers are required, multiple filters may be used.
 A convenience function will add an `AuthorizationFilter`:
 ```kotlin
     resourceLoader.addAuthorizationFilter(
-        host = "*.example.com",
+        host = "example.com",
         headerName = "Authorization",
         headerValue = accessToken,
     )
 ```
-This will cause an "`Authorization`" header to be added to all requests to hosts with names ending with
-&ldquo;`.example.com`&rdquo; (standard wildcard rules apply &ndash; `?` matches a single character and `*` matches zero
-or more characters).
+This will cause an "`Authorization`" header to be added to all requests to a host with the name
+&ldquo;`example.com`&rdquo;.
+
+If wildcard matching of host names (or other complex matching, like a member of a set) is required, a `StringMatcher`
+(see [`string-matcher`](https://github.com/pwall567/string-matcher)) may be supplied in place of the literal host name.
 
 ### Redirection Filter
 
@@ -146,7 +148,9 @@ Again, a convenience function will add the filter:
         toPort = 8080,
     )
 ```
-This will cause all requests to "`example.com`" to be redirected to "`localhost:8080`".
+This will cause all requests to &ldquo;`example.com`&rdquo; to be redirected to &ldquo;`localhost:8080`&rdquo;.
+As with `addAuthorizationFilter()` if more complex host name matching is required, a `StringMatcher` may be supplied in
+place of the literal host name.
 
 ### Prefix-Based Redirection Filter
 
@@ -165,25 +169,25 @@ in the local filesystem described by `localDirectory` (a `java.io.File`).
 
 ## Dependency Specification
 
-The latest version of the library is 6.2, and it may be obtained from the Maven Central repository.
+The latest version of the library is 6.3, and it may be obtained from the Maven Central repository.
 
 ### Maven
 ```xml
     <dependency>
       <groupId>io.kjson</groupId>
       <artifactId>resource-loader</artifactId>
-      <version>6.2</version>
+      <version>6.3</version>
     </dependency>
 ```
 ### Gradle
 ```groovy
-    implementation 'io.kjson:resource-loader:6.2'
+    implementation 'io.kjson:resource-loader:6.3'
 ```
 ### Gradle (kts)
 ```kotlin
-    implementation("io.kjson:resource-loader:6.2")
+    implementation("io.kjson:resource-loader:6.3")
 ```
 
 Peter Wall
 
-2025-02-09
+2025-03-14

@@ -2,6 +2,10 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [6.3] - 2025-03-04
+### Changed
+- `ResourceLoader`: switched from `wildcard` library to `string-matcher`
+
 ## [6.2] - 2025-02-09
 ### Changed
 - `pom.xml`: updated dependency version
