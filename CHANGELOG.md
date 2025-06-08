@@ -2,6 +2,12 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [6.4] - 2025-04-18
+### Changed
+- `SyntheticResource`, `Resource`: allow `resolve()` for absolute URLs only
+- `pom.xml`: updated test dependency version
+- `pom.xml`: workaround for problem of tests not being detected
+
 ## [6.3] - 2025-03-04
 ### Changed
 - `ResourceLoader`: switched from `wildcard` library to `string-matcher`
@@ -16,6 +22,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 - tests: simplified tests involving Windows paths
 
 ## [6.0] - 2025-01-14
+### Added
+- `SyntheticResource`: new
 ### Changed
 - `Resource`, `ResourceLoader`: changed to make better use of JVM URL features
 - `Resource`: added `equals()` and `hashCode()`
