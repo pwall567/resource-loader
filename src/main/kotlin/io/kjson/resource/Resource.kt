@@ -45,7 +45,7 @@ import io.kjson.util.HTTPHeader
 open class Resource<T>(
     val url: URL,
     val isDirectory: Boolean,
-    private val resourceLoader: ResourceLoader<T>,
+    internal val resourceLoader: ResourceLoader<T>,
 ) {
 
     /**
@@ -205,13 +205,26 @@ open class Resource<T>(
         /**
          * Hash code of "relevant" fields of URL (can't use `hashCode()` because that may involve network operations).
          */
-        fun URL.relevantHashCode(): Int = protocol.hashCode() +
+        fun URL.relevantHashCode(): Int = protocol.hashCode() xor
                 (if (host.isNullOrEmpty()) 0 else
-                        if (host == "127.0.0.1") "localhost".hashCode() else host.lowercase().hashCode()) +
-                port +
-                (if (path.isNullOrEmpty()) 0 else path.hashCode()) +
-                (if (query == null) 0 else query.hashCode()) +
+                        if (host == "127.0.0.1") "localhost".hashCode() else host.lowercase().hashCode()) xor
+                port xor
+                (if (path.isNullOrEmpty()) 0 else path.hashCode()) xor
+                (if (query == null) 0 else query.hashCode()) xor
                 (if (ref == null) 0 else ref.hashCode())
+
+        /**
+         * Check whether a URL string has a "protocol" field (suitable for use as an absolute URL).
+         */
+        fun String.hasProtocol(): Boolean {
+            for (i in indices) {
+                when (this[i]) {
+                    ':' -> return i > 0
+                    '/' -> break
+                }
+            }
+            return false
+        }
 
     }
 

@@ -44,6 +44,7 @@ import io.kstuff.test.shouldEndWith
 import io.kstuff.test.shouldStartWith
 import io.kstuff.test.shouldThrow
 
+import io.kjson.resource.Resource.Companion.hasProtocol
 import io.kjson.resource.Resource.Companion.relevantHashCode
 import io.kjson.resource.Resource.Companion.sameAs
 
@@ -290,6 +291,14 @@ class ResourceTest {
         (jarURL sameAs fileURL) shouldBe false
         (jarURL sameAs httpURL) shouldBe false
         (jarURL sameAs localhostURL) shouldBe false
+    }
+
+    @Test fun `should test for presence of protocol correctly`() {
+        "http://xyz.com".hasProtocol() shouldBe true
+        File(".").toURI().toURL().toString().hasProtocol() shouldBe true
+        "relative.txt".hasProtocol() shouldBe false
+        "/test1.txt".hasProtocol() shouldBe false
+        ":test1.txt".hasProtocol() shouldBe false
     }
 
     @Suppress("ConstPropertyName")

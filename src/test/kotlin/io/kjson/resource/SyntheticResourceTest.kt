@@ -26,8 +26,10 @@
 package io.kjson.resource
 
 import kotlin.test.Test
+
 import io.kstuff.test.shouldBe
 import io.kstuff.test.shouldBeSameInstance
+import io.kstuff.test.shouldThrow
 
 class SyntheticResourceTest {
 
@@ -37,6 +39,23 @@ class SyntheticResourceTest {
         val syntheticResource = resourceLoader.syntheticResource("{generated}", doc)
         syntheticResource.toString() shouldBe "{generated}"
         syntheticResource.load() shouldBeSameInstance doc
+    }
+
+    @Test fun `should resolve absolute URL from SyntheticResource`() {
+        val resourceLoader = XMLLoader()
+        val doc = resourceLoader.load("src/test/resources/xml/test1.xml")
+        val syntheticResource = resourceLoader.syntheticResource("{generated}", doc)
+        val absoluteResource = syntheticResource.resolve("http://localhost")
+        absoluteResource.url.toString() shouldBe "http://localhost"
+    }
+
+    @Test fun `should throw exception resolving relative URL from SyntheticResource`() {
+        val resourceLoader = XMLLoader()
+        val doc = resourceLoader.load("src/test/resources/xml/test1.xml")
+        val syntheticResource = resourceLoader.syntheticResource("{generated}", doc)
+        shouldThrow<ResourceLoaderException>("Can't resolve relative URL from synthetic resource") {
+            syntheticResource.resolve("test2.xml")
+        }
     }
 
 }

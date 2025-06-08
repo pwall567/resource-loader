@@ -28,20 +28,31 @@ package io.kjson.resource
 import java.io.ByteArrayInputStream
 import java.net.URL
 
+/**
+ * A `SyntheticResource` may be used to represent an internally-generated [Resource].
+ *
+ * @author  Peter Wall
+ */
 class SyntheticResource<T>(
     private val name: String,
     private val value: T,
     resourceLoader: ResourceLoader<T>,
-) : Resource<T>(URL("http://localhost/$name"), false, resourceLoader) {
+) : Resource<T>(URL("http://localhost/synthetic/$name"), false, resourceLoader) {
 
     override fun open(): ResourceDescriptor {
+        // this should never be called, but if it is, it will return a zero-length stream
         return ResourceDescriptor(
             inputStream = ByteArrayInputStream(ByteArray(0)),
             url = url,
         )
     }
 
-    override fun resolve(relativeURL: String): Resource<T> = this
+    override fun resolve(relativeURL: String): Resource<T> {
+        if (!relativeURL.hasProtocol())
+            throw ResourceLoaderException("Can't resolve relative URL from synthetic resource")
+        val resolvedURL = URL(relativeURL)
+        return Resource(resolvedURL, resolvedURL.toString().endsWith('/'), resourceLoader)
+    }
 
     override fun load(): T = value
 
