@@ -2,6 +2,12 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [6.5] - 2025-11-12
+### Changed
+- `pom.xml`: changed parent POM to `io.kstuff:kstuff-maven:2.0` and added `groupId`
+- `deploy.yml`: switched upload target to `central`
+- `pom.xml`: updated dependency versions
+
 ## [6.4] - 2025-04-18
 ### Changed
 - `SyntheticResource`, `Resource`: allow `resolve()` for absolute URLs only

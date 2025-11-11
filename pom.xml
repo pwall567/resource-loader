@@ -3,22 +3,23 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
+  <groupId>io.kjson</groupId>
   <artifactId>resource-loader</artifactId>
-  <version>6.4</version>
+  <version>6.5</version>
   <name>Resource loading mechanism</name>
   <packaging>jar</packaging>
   <url>https://github.com/pwall567/resource-loader</url>
 
   <parent>
-    <groupId>io.kjson</groupId>
-    <artifactId>kjson-maven</artifactId>
-    <version>6.0</version>
+    <groupId>io.kstuff</groupId>
+    <artifactId>kstuff-maven</artifactId>
+    <version>2.0</version>
   </parent>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>1.8</java.version>
-    <ktor.version>3.1.2</ktor.version>
+    <ktor.version>3.2.3</ktor.version>
     <surefire.version>3.5.3</surefire.version>
     <!-- Stop IntelliJ doing stupid things with Java version! -->
     <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -64,7 +65,7 @@
     <dependency>
       <groupId>io.jstuff</groupId>
       <artifactId>pipelines</artifactId>
-      <version>6.0</version>
+      <version>7.0</version>
     </dependency>
     <dependency>
       <groupId>io.jstuff</groupId>
@@ -78,7 +79,7 @@
     <dependency>
       <groupId>io.kstuff</groupId>
       <artifactId>should-test</artifactId>
-      <version>4.5</version>
+      <version>4.6</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -89,7 +90,7 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>1.17.1</version>
+      <version>1.20.0</version>
       <scope>test</scope>
       <!-- pinning this version to avoid CVE in ktor -->
     </dependency>
@@ -108,13 +109,13 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>2.0.13</version>
+      <version>2.0.17</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-nop</artifactId>
-      <version>2.0.13</version>
+      <version>2.0.17</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
